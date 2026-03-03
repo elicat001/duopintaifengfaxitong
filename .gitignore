@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Database
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Uploads & screenshots
+data/uploads/
+data/screenshots/
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
