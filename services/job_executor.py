@@ -240,7 +240,7 @@ class JobExecutor:
             self._browser_svc.create_context(
                 account_id, proxy_config=proxy_config, fingerprint=fingerprint
             )
-            context = self._browser_svc._contexts.get(account_id)
+            context = self._browser_svc.get_context(account_id)
             publish_url = publisher.PUBLISH_URL or publisher.HOME_URL
             self._browser_svc.inject_cookies(context, cookies, publish_url)
             page = self._browser_svc.new_page(account_id)
@@ -291,7 +291,7 @@ class JobExecutor:
                               "status": "ok", "message": "发布验证成功"})
             else:
                 # Could not verify — mark as needs_review rather than failing
-                job_svc.transition(job_id, "success")
+                job_svc.transition(job_id, "needs_review")
                 log_svc.add({"job_id": job_id, "step": "verify",
                               "status": "ok",
                               "message": "发布已提交，验证结果不确定"})

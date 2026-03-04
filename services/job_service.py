@@ -143,9 +143,11 @@ class JobService:
     # -- delete ----------------------------------------------------------------
 
     def delete(self, job_id: int) -> bool:
-        """Delete a job. Returns True if deleted."""
+        """Delete a job and its related records (cascade). Returns True if deleted."""
         conn = get_connection(self.db_path)
         try:
+            conn.execute("DELETE FROM job_logs WHERE job_id = ?", (job_id,))
+            conn.execute("DELETE FROM metrics WHERE job_id = ?", (job_id,))
             cur = conn.execute(
                 "DELETE FROM jobs WHERE id = ?", (job_id,)
             )
@@ -246,32 +248,38 @@ class JobService:
                 return False
 
             now = _now()
-            attempt_count = job["attempt_count"]
-            max_attempts = job["max_attempts"]
-
-            # Special handling: retry (failed_retryable -> queued)
-            if current_state == "failed_retryable" and new_state == "queued":
-                if attempt_count >= max_attempts:
-                    return False
-                attempt_count += 1
 
             # Determine next_run_at: set to now when moving into queued
             next_run_at = job.get("next_run_at")
             if new_state == "queued":
                 next_run_at = now
 
-            # Atomic: only update if state hasn't changed since we read it
-            cur = conn.execute(
-                """
-                UPDATE jobs
-                SET state = ?,
-                    attempt_count = ?,
-                    next_run_at = ?,
-                    updated_at = ?
-                WHERE id = ? AND state = ?
-                """,
-                (new_state, attempt_count, next_run_at, now, job_id, current_state),
-            )
+            # Special handling: retry (failed_retryable -> queued)
+            # Use SQL-level increment to avoid race condition on attempt_count
+            if current_state == "failed_retryable" and new_state == "queued":
+                cur = conn.execute(
+                    """
+                    UPDATE jobs
+                    SET state = ?,
+                        attempt_count = attempt_count + 1,
+                        next_run_at = ?,
+                        updated_at = ?
+                    WHERE id = ? AND state = ? AND attempt_count < max_attempts
+                    """,
+                    (new_state, next_run_at, now, job_id, current_state),
+                )
+            else:
+                # Atomic: only update if state hasn't changed since we read it
+                cur = conn.execute(
+                    """
+                    UPDATE jobs
+                    SET state = ?,
+                        next_run_at = ?,
+                        updated_at = ?
+                    WHERE id = ? AND state = ?
+                    """,
+                    (new_state, next_run_at, now, job_id, current_state),
+                )
             conn.commit()
             return cur.rowcount > 0
         finally:

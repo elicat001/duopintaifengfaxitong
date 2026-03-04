@@ -1248,11 +1248,11 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
     <p>Enterprise Content Distribution Platform</p>
     <div class="form-group">
       <label>用户名</label>
-      <input type="text" id="login-username" placeholder="请输入用户名" value="admin">
+      <input type="text" id="login-username" placeholder="请输入用户名">
     </div>
     <div class="form-group">
       <label>密码</label>
-      <input type="password" id="login-password" placeholder="请输入密码" value="admin" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="login-password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="btn-primary" onclick="doLogin()">登 录</button>
     <div class="login-error" id="login-error"></div>
@@ -1344,7 +1344,7 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
     <div class="tab-page" id="page-contents">
       <div class="page-header"><h1>📝 内容管理</h1><p>管理所有分发内容</p></div>
       <div class="toolbar">
-        <input type="text" id="content-search" placeholder="搜索标题..." onkeyup="loadContents()">
+        <input type="text" id="content-search" placeholder="搜索标题..." onkeyup="debouncedLoadContents()">
         <select id="content-status-filter" onchange="loadContents()">
           <option value="">全部状态</option>
           <option value="draft">草稿</option>
@@ -1400,6 +1400,7 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
           <option value="weibo">微博</option>
           <option value="bilibili">B站</option>
           <option value="xiaohongshu">小红书</option>
+          <option value="douyin">抖音</option>
         </select>
         <select id="policy-scope-filter" onchange="loadPolicies()">
           <option value="">全部作用域</option>
@@ -1508,6 +1509,7 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
           <option value="video">视频</option>
         </select>
       </div>
+      <div class="form-group"><label>正文</label><textarea id="cc-body" rows="4" placeholder="内容正文（可选）"></textarea></div>
       <div class="form-group"><label>标签</label><input type="text" id="cc-tags" placeholder="用逗号分隔多个标签"><div class="form-hint">如: AI, 教程, 新手</div></div>
     </div>
     <div class="modal-footer">
@@ -1536,6 +1538,7 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
           <option value="video">视频</option>
         </select>
       </div>
+      <div class="form-group"><label>正文</label><textarea id="ce-body" rows="4" placeholder="内容正文（可选）"></textarea></div>
       <div class="form-group"><label>标签</label><input type="text" id="ce-tags"></div>
     </div>
     <div class="modal-footer">
@@ -1578,7 +1581,7 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
             <option value="youtube">YouTube</option><option value="tiktok">TikTok</option>
             <option value="instagram">Instagram</option><option value="twitter">Twitter</option>
             <option value="facebook">Facebook</option><option value="weibo">微博</option>
-            <option value="bilibili">B站</option><option value="xiaohongshu">小红书</option>
+            <option value="bilibili">B站</option><option value="xiaohongshu">小红书</option><option value="douyin">抖音</option>
           </select>
         </div>
       </div>
@@ -1632,7 +1635,7 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
             <option value="youtube">YouTube</option><option value="tiktok">TikTok</option>
             <option value="instagram">Instagram</option><option value="twitter">Twitter</option>
             <option value="facebook">Facebook</option><option value="weibo">微博</option>
-            <option value="bilibili">B站</option><option value="xiaohongshu">小红书</option>
+            <option value="bilibili">B站</option><option value="xiaohongshu">小红书</option><option value="douyin">抖音</option>
           </select>
         </div>
         <div class="form-group"><label>账号组</label>
@@ -1674,7 +1677,7 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
           <option value="youtube">YouTube</option><option value="tiktok">TikTok</option>
           <option value="instagram">Instagram</option><option value="twitter">Twitter</option>
           <option value="facebook">Facebook</option><option value="weibo">微博</option>
-          <option value="bilibili">B站</option><option value="xiaohongshu">小红书</option>
+          <option value="bilibili">B站</option><option value="xiaohongshu">小红书</option><option value="douyin">抖音</option>
         </select>
       </div>
       <div class="form-row">
@@ -1763,6 +1766,8 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
           <label class="checkbox-item"><input type="checkbox" value="weibo"> 微博</label>
           <label class="checkbox-item"><input type="checkbox" value="twitter"> Twitter</label>
           <label class="checkbox-item"><input type="checkbox" value="facebook"> Facebook</label>
+          <label class="checkbox-item"><input type="checkbox" value="bilibili"> B站</label>
+          <label class="checkbox-item"><input type="checkbox" value="douyin"> 抖音</label>
         </div>
       </div>
       <div class="form-row">
@@ -2119,13 +2124,8 @@ function navigate(tab) {
    ======================================================== */
 async function loadDashboard() {
   try {
-    const [dashData, statsData] = await Promise.all([
-      API.get('/api/dashboard').catch(() => null),
-      API.get('/api/stats').catch(() => null),
-    ]);
-
-    const stats = statsData || {};
-    const dash = dashData || {};
+    const dash = await API.get('/api/dashboard').catch(() => null) || {};
+    const stats = dash.stats || {};
 
     // Stats cards
     const totalContents = stats.total_contents || 0;
@@ -2206,6 +2206,12 @@ async function loadDashboard() {
 /* ========================================================
    CONTENTS
    ======================================================== */
+let _contentSearchTimer = null;
+function debouncedLoadContents() {
+  clearTimeout(_contentSearchTimer);
+  _contentSearchTimer = setTimeout(loadContents, 300);
+}
+
 async function loadContents() {
   try {
     const tbody = document.getElementById('contents-tbody');
@@ -2254,17 +2260,21 @@ async function createContent() {
   const topic = document.getElementById('cc-topic').value.trim();
   const language = document.getElementById('cc-language').value.trim();
   const content_type = document.getElementById('cc-type').value;
+  const body = document.getElementById('cc-body').value.trim();
   const tagsStr = document.getElementById('cc-tags').value.trim();
   const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   if (!title) { toast('请输入标题', 'warning'); return; }
   try {
     showLoading();
-    await API.post('/api/contents', { title, topic, language, content_type, tags });
+    const payload = { title, topic, language, content_type, tags };
+    if (body) payload.body = body;
+    await API.post('/api/contents', payload);
     toast('内容创建成功', 'success');
     closeModal('content-create-modal');
     document.getElementById('cc-title').value = '';
     document.getElementById('cc-topic').value = '';
+    document.getElementById('cc-body').value = '';
     document.getElementById('cc-tags').value = '';
     document.getElementById('cc-language').value = 'zh';
     document.getElementById('cc-type').value = 'image_single';
@@ -2281,6 +2291,7 @@ async function openEditContentModal(id) {
     document.getElementById('ce-topic').value = c.topic || '';
     document.getElementById('ce-language').value = c.language || 'zh';
     document.getElementById('ce-type').value = c.content_type || 'image_single';
+    document.getElementById('ce-body').value = c.body || '';
     document.getElementById('ce-tags').value = (c.tags || []).join(', ');
     openModal('content-edit-modal');
   } catch(e) { toast('加载内容失败: ' + e.message, 'error'); }
@@ -2292,13 +2303,14 @@ async function updateContent() {
   const topic = document.getElementById('ce-topic').value.trim();
   const language = document.getElementById('ce-language').value.trim();
   const content_type = document.getElementById('ce-type').value;
+  const body = document.getElementById('ce-body').value.trim();
   const tagsStr = document.getElementById('ce-tags').value.trim();
   const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   if (!title) { toast('请输入标题', 'warning'); return; }
   try {
     showLoading();
-    await API.put('/api/contents/' + id, { title, topic, language, content_type, tags });
+    await API.put('/api/contents/' + id, { title, topic, language, content_type, body, tags });
     toast('内容更新成功', 'success');
     closeModal('content-edit-modal');
     loadContents();
@@ -2490,6 +2502,7 @@ async function loadAccountGroups() {
     const data = await API.get('/api/account-groups');
     state.accountGroups = Array.isArray(data) ? data : (data.groups || []);
     const bar = document.getElementById('account-groups-bar');
+    if (!bar) return;
     const chips = bar.querySelectorAll('.group-chip[data-gid]');
     chips.forEach(c => { if (c.dataset.gid !== '') c.remove(); });
 
@@ -2562,6 +2575,7 @@ function renderAcctListTab() {
         <option value="facebook">Facebook</option><option value="weibo">微博</option>
         <option value="xiaohongshu">小红书</option>
         <option value="bilibili">B站</option>
+        <option value="douyin">抖音</option>
       </select>
       <select id="account-status-filter" onchange="loadAccounts()">
         <option value="">全部状态</option>
@@ -3087,7 +3101,7 @@ async function loadLoginData() {
     const el = document.getElementById('login-stats-cards');
     if(el) el.innerHTML = cardsHtml;
 
-    const allStatus = await API.get('/api/login-status/failing');
+    const allStatus = failing || [];
     const tbody = document.getElementById('login-tbody');
     if(!tbody) return;
     if(allStatus.length === 0) { tbody.innerHTML = emptyRow(8,'所有账号登录正常'); return; }
@@ -3400,9 +3414,7 @@ function openPolicyModal(editData) {
 
 async function openEditPolicyModal(id) {
   try {
-    const policies = await API.get('/api/policies');
-    const list = Array.isArray(policies) ? policies : (policies.policies || policies.items || []);
-    const p = list.find(x => x.id === id);
+    const p = await API.get('/api/policies/' + id);
     if (p) openPolicyModal(p);
     else toast('未找到策略', 'error');
   } catch(e) { toast('加载策略失败: ' + e.message, 'error'); }
@@ -4395,6 +4407,8 @@ async function loadAiGenerate() {
               <option value="tiktok">TikTok</option>
               <option value="youtube">YouTube</option>
               <option value="xiaohongshu">小红书</option>
+              <option value="bilibili">B站</option>
+              <option value="douyin">抖音</option>
               <option value="weibo">微博</option>
               <option value="twitter">Twitter</option>
               <option value="facebook">Facebook</option>
@@ -4620,9 +4634,7 @@ async function openPipelineModal(editData) {
 
 async function editPipeline(id) {
   try {
-    const data = await API.get('/api/ai/pipelines');
-    const pipelines = Array.isArray(data) ? data : (data.pipelines || data.items || []);
-    const p = pipelines.find(x => x.id === id);
+    const p = await API.get('/api/ai/pipelines/' + id);
     if (p) openPipelineModal(p);
     else toast('未找到流水线', 'error');
   } catch(e) { toast('加载失败: ' + e.message, 'error'); }
@@ -4640,8 +4652,8 @@ async function submitPipeline() {
     mode: document.getElementById('plm-mode').value,
     auto_approve: document.getElementById('plm-auto-review').value === 'true',
     target_platforms,
-    daily_limit: parseInt(document.getElementById('plm-daily-limit').value) || 10,
-    daily_token_budget: parseInt(document.getElementById('plm-token-budget').value) || 100000,
+    max_daily_generations: parseInt(document.getElementById('plm-daily-limit').value) || 10,
+    max_daily_tokens: parseInt(document.getElementById('plm-token-budget').value) || 100000,
     ai_config_id: parseInt(document.getElementById('plm-config').value) || undefined,
   };
   try {
@@ -4885,9 +4897,7 @@ async function openAiConfigModal(editData) {
 
 async function editAiConfig(id) {
   try {
-    const data = await API.get('/api/ai/configs');
-    const configs = Array.isArray(data) ? data : (data.configs || data.items || []);
-    const c = configs.find(x => x.id === id);
+    const c = await API.get('/api/ai/configs/' + id);
     if (c) await openAiConfigModal(c);
     else toast('未找到配置', 'error');
   } catch(e) { toast('加载失败: ' + e.message, 'error'); }

@@ -219,13 +219,8 @@ class ContentService:
                 return False
 
             # Delete job_logs and metrics for jobs referencing this content
-            job_ids = conn.execute(
-                "SELECT id FROM jobs WHERE content_id = ?", (content_id,)
-            ).fetchall()
-            for job_row in job_ids:
-                jid = job_row["id"]
-                conn.execute("DELETE FROM job_logs WHERE job_id = ?", (jid,))
-                conn.execute("DELETE FROM metrics WHERE job_id = ?", (jid,))
+            conn.execute("DELETE FROM job_logs WHERE job_id IN (SELECT id FROM jobs WHERE content_id = ?)", (content_id,))
+            conn.execute("DELETE FROM metrics WHERE job_id IN (SELECT id FROM jobs WHERE content_id = ?)", (content_id,))
 
             # Delete jobs referencing this content
             conn.execute("DELETE FROM jobs WHERE content_id = ?", (content_id,))

@@ -380,6 +380,11 @@ class BrowserService:
     def navigate(self, page, url: str, wait_until: str = "networkidle"):
         return self._run_async(self._navigate(page, url, wait_until))
 
+    def get_context(self, account_id):
+        """Thread-safe access to browser context."""
+        with self._lock:
+            return self._contexts.get(account_id)
+
     @property
     def active_context_count(self) -> int:
         return len(self._contexts)

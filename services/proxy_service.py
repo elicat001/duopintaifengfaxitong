@@ -82,6 +82,7 @@ class ProxyGroupService:
     def delete(self, group_id: int) -> bool:
         conn = get_connection(self.db_path)
         try:
+            conn.execute("UPDATE proxies SET proxy_group_id = NULL WHERE proxy_group_id = ?", (group_id,))
             cur = conn.execute("DELETE FROM proxy_groups WHERE id = ?", (group_id,))
             conn.commit()
             return cur.rowcount > 0
@@ -226,6 +227,8 @@ class ProxyService:
     def delete(self, proxy_id: int) -> bool:
         conn = get_connection(self.db_path)
         try:
+            conn.execute("DELETE FROM account_proxy_assignments WHERE proxy_id = ?", (proxy_id,))
+            conn.execute("DELETE FROM proxy_check_logs WHERE proxy_id = ?", (proxy_id,))
             cur = conn.execute("DELETE FROM proxies WHERE id = ?", (proxy_id,))
             conn.commit()
             return cur.rowcount > 0

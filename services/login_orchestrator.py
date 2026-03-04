@@ -118,7 +118,7 @@ class LoginOrchestrator:
                 }
 
             # Extract cookies
-            context = self.browser._contexts.get(account_id)
+            context = self.browser.get_context(account_id)
             if not context:
                 raise RuntimeError("浏览器上下文不存在")
 

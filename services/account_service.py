@@ -391,13 +391,8 @@ class AccountService:
                 return False
 
             # Delete job_logs and metrics for jobs belonging to this account
-            job_ids = conn.execute(
-                "SELECT id FROM jobs WHERE account_id = ?", (account_id,)
-            ).fetchall()
-            for job_row in job_ids:
-                jid = job_row["id"]
-                conn.execute("DELETE FROM job_logs WHERE job_id = ?", (jid,))
-                conn.execute("DELETE FROM metrics WHERE job_id = ?", (jid,))
+            conn.execute("DELETE FROM job_logs WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)", (account_id,))
+            conn.execute("DELETE FROM metrics WHERE job_id IN (SELECT id FROM jobs WHERE account_id = ?)", (account_id,))
 
             # Delete jobs for this account
             conn.execute("DELETE FROM jobs WHERE account_id = ?", (account_id,))
