@@ -194,6 +194,27 @@ class TopicSuggestionService:
         finally:
             conn.close()
 
+    # -- get_stats -------------------------------------------------------------
+
+    def get_stats(self) -> dict:
+        """Return counts of topic suggestions grouped by status."""
+        conn = get_connection(self.db_path)
+        try:
+            rows = conn.execute(
+                "SELECT status, COUNT(*) AS cnt FROM topic_suggestions GROUP BY status"
+            ).fetchall()
+            counts = {row["status"]: row["cnt"] for row in rows}
+            total = sum(counts.values())
+            return {
+                "total": total,
+                "pending": counts.get("pending", 0),
+                "accepted": counts.get("accepted", 0),
+                "rejected": counts.get("rejected", 0),
+                "used": counts.get("used", 0),
+            }
+        finally:
+            conn.close()
+
     # -- analyze_top_topics ----------------------------------------------------
 
     def analyze_top_topics(self) -> List[dict]:
@@ -201,6 +222,9 @@ class TopicSuggestionService:
 
         Returns up to 20 topics sorted by average likes descending, each
         containing: topic, avg_views, avg_likes, avg_comments, avg_shares, cnt.
+
+        Falls back to content-based analysis (without metrics) when no
+        performance data is available.
         """
         conn = get_connection(self.db_path)
         try:
@@ -221,6 +245,27 @@ class TopicSuggestionService:
                 LIMIT 20
                 """
             ).fetchall()
-            return [dict(row) for row in rows]
+            results = [dict(row) for row in rows]
+
+            # Fallback: when no metrics data, derive suggestions from contents
+            if not results:
+                rows = conn.execute(
+                    """
+                    SELECT c.topic,
+                           0 AS avg_views,
+                           0 AS avg_likes,
+                           0 AS avg_comments,
+                           0 AS avg_shares,
+                           COUNT(*) AS cnt
+                    FROM contents c
+                    WHERE c.topic IS NOT NULL AND c.topic != ''
+                    GROUP BY c.topic
+                    ORDER BY cnt DESC
+                    LIMIT 20
+                    """
+                ).fetchall()
+                results = [dict(row) for row in rows]
+
+            return results
         finally:
             conn.close()

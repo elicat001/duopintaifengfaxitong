@@ -1018,6 +1018,142 @@ tr:hover td { background: rgba(79,143,255,0.03); }
 .btn-gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1500; font-weight: 700; box-shadow: 0 2px 12px rgba(251,191,36,0.25); letter-spacing: 0.02em; }
 .btn-gold:hover { box-shadow: 0 4px 20px rgba(251,191,36,0.35); transform: translateY(-1px); }
 
+/* ── Enhanced Topic Suggestion Styles ── */
+.topic-stats-bar {
+  display: flex; align-items: center; gap: 16px; padding: 10px 16px;
+  background: rgba(12,16,23,0.5); border-radius: var(--radius);
+  border: 1px solid var(--border-color); font-size: 12.5px; color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.topic-stats-bar .stat-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.topic-stats-bar .stat-num { font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); font-size: 14px; }
+.topic-stats-bar .stat-divider { width: 1px; height: 16px; background: var(--border-color); }
+
+.ai-topic-card {
+  background: var(--bg-card); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 14px;
+  border-left: 3px solid var(--purple); transition: var(--transition);
+  position: relative;
+}
+.ai-topic-card:hover {
+  border-color: rgba(167,139,250,0.25);
+  box-shadow: 0 4px 24px rgba(167,139,250,0.08), var(--shadow-sm);
+  transform: translateX(3px);
+}
+.ai-topic-card.status-accepted { border-left-color: var(--green); }
+.ai-topic-card.status-rejected { border-left-color: var(--red); opacity: 0.7; }
+.ai-topic-card.status-used { border-left-color: var(--cyan); }
+
+.topic-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; gap: 12px; }
+.topic-title { font-family: var(--font-display); font-size: 15.5px; font-weight: 700; line-height: 1.4; color: var(--text-primary); flex: 1; }
+.topic-desc {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.65; margin-bottom: 10px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.topic-reasoning {
+  font-size: 12.5px; color: var(--text-muted); font-style: italic; line-height: 1.6;
+  padding: 10px 14px; margin-bottom: 12px;
+  background: rgba(167,139,250,0.04); border-radius: var(--radius);
+  border: 1px solid rgba(167,139,250,0.08);
+  border-left: 2px solid rgba(167,139,250,0.25);
+}
+.topic-scores { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.score-row { display: flex; align-items: center; gap: 10px; }
+.score-row .score-label { font-size: 11.5px; color: var(--text-muted); min-width: 64px; text-align: right; font-weight: 500; }
+.score-row .score-bar { flex: 1; margin: 0; height: 5px; }
+.score-row .score-val { font-size: 11.5px; font-family: var(--font-mono); color: var(--text-secondary); min-width: 28px; font-weight: 600; }
+.score-bar-fill.score-green { background: linear-gradient(90deg, var(--green-dark), var(--green)); }
+.score-bar-fill.score-orange { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+
+.topic-source-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.topic-source-badge.source-ai { background: rgba(79,143,255,0.12); color: var(--blue-light); }
+.topic-source-badge.source-manual { background: rgba(167,139,250,0.12); color: var(--purple); }
+.topic-source-badge.source-data { background: rgba(34,211,238,0.12); color: var(--cyan); }
+
+.topic-meta {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+  font-size: 12px; color: var(--text-muted); flex-wrap: wrap;
+}
+.topic-meta .meta-item { display: inline-flex; align-items: center; gap: 4px; }
+.topic-content-type {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+  background: rgba(251,191,36,0.1); color: var(--yellow); border: 1px solid rgba(251,191,36,0.1);
+}
+.topic-platform-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.topic-platform-chip {
+  font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 12px;
+  letter-spacing: 0.02em;
+}
+.platform-xiaohongshu { background: rgba(255,45,85,0.1); color: #ff6b8a; border: 1px solid rgba(255,45,85,0.1); }
+.platform-douyin { background: rgba(0,0,0,0.2); color: #fe2c55; border: 1px solid rgba(254,44,85,0.15); }
+.platform-bilibili { background: rgba(0,174,236,0.1); color: #00aeec; border: 1px solid rgba(0,174,236,0.12); }
+.platform-weibo { background: rgba(230,35,41,0.1); color: #e6232a; border: 1px solid rgba(230,35,41,0.1); }
+.platform-instagram { background: linear-gradient(135deg, rgba(131,58,180,0.1), rgba(253,29,29,0.08)); color: #c13584; border: 1px solid rgba(193,53,132,0.12); }
+.platform-tiktok { background: rgba(0,0,0,0.2); color: #69c9d0; border: 1px solid rgba(105,201,208,0.15); }
+.platform-youtube { background: rgba(255,0,0,0.08); color: #ff4444; border: 1px solid rgba(255,0,0,0.1); }
+.platform-twitter { background: rgba(29,161,242,0.1); color: #1da1f2; border: 1px solid rgba(29,161,242,0.1); }
+.platform-facebook { background: rgba(24,119,242,0.1); color: #4a90d9; border: 1px solid rgba(24,119,242,0.1); }
+
+.topic-used-link {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px;
+  padding: 3px 10px; border-radius: 6px;
+  background: rgba(34,211,238,0.08); color: var(--cyan); border: 1px solid rgba(34,211,238,0.12);
+  font-family: var(--font-mono); font-weight: 500;
+}
+
+.topic-empty-state {
+  text-align: center; padding: 72px 24px;
+  background: var(--bg-card); border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-color);
+}
+.topic-empty-state .empty-icon { font-size: 56px; margin-bottom: 18px; opacity: 0.35; }
+.topic-empty-state h3 { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+.topic-empty-state p { font-size: 13.5px; color: var(--text-muted); line-height: 1.7; margin-bottom: 24px; max-width: 420px; margin-left: auto; margin-right: auto; }
+.topic-empty-state .empty-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* Topic Create Modal extras */
+.topic-modal-platforms { display: flex; flex-wrap: wrap; gap: 8px; }
+.topic-modal-platforms label {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px;
+  background: rgba(56,68,100,0.2); border: 1px solid var(--border-color);
+  border-radius: var(--radius); cursor: pointer; font-size: 12.5px; color: var(--text-secondary);
+  transition: var(--transition-fast); user-select: none;
+}
+.topic-modal-platforms label:hover { border-color: var(--blue); color: var(--text-primary); }
+.topic-modal-platforms input:checked + span { color: var(--blue-light); }
+.topic-modal-platforms label:has(input:checked) { border-color: var(--blue); background: rgba(79,143,255,0.08); }
+
+.topic-modal-radios { display: flex; gap: 12px; flex-wrap: wrap; }
+.topic-modal-radios label {
+  display: inline-flex; align-items: center; gap: 5px; padding: 8px 16px;
+  background: rgba(56,68,100,0.2); border: 1px solid var(--border-color);
+  border-radius: var(--radius); cursor: pointer; font-size: 13px; color: var(--text-secondary);
+  transition: var(--transition-fast); user-select: none;
+}
+.topic-modal-radios label:hover { border-color: var(--purple); }
+.topic-modal-radios label:has(input:checked) { border-color: var(--purple); background: rgba(167,139,250,0.1); color: var(--purple); }
+
+.topic-score-slider { display: flex; align-items: center; gap: 14px; }
+.topic-score-slider input[type="range"] {
+  flex: 1; -webkit-appearance: none; appearance: none; height: 6px;
+  background: rgba(12,16,23,0.6); border-radius: 3px; outline: none; border: none; padding: 0;
+}
+.topic-score-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--purple); cursor: pointer;
+  box-shadow: 0 2px 8px rgba(167,139,250,0.3);
+}
+.topic-score-slider .score-display {
+  font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--purple);
+  min-width: 36px; text-align: center;
+}
+
 .ai-pipeline-card {
   background: var(--bg-card); backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
@@ -3789,22 +3925,148 @@ function deleteTrend(id) {
   });
 }
 
-/* --- AI Topics --- */
+/* --- AI Topics (Enhanced) --- */
 let aiTopicStatus = '';
+let aiTopicSort = 'score';
+let _topicCache = [];
+
+function formatRelativeTime(isoString) {
+  if (!isoString) return '';
+  const now = Date.now();
+  const then = new Date(isoString).getTime();
+  const diff = Math.max(0, now - then);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return '刚刚';
+  if (mins < 60) return mins + '分钟前';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + '小时前';
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return days + '天前';
+  const months = Math.floor(days / 30);
+  if (months < 12) return months + '个月前';
+  return Math.floor(months / 12) + '年前';
+}
+
+function _topicPlatformClass(p) {
+  const map = { '小红书':'xiaohongshu','抖音':'douyin','B站':'bilibili','微博':'weibo',
+    'Instagram':'instagram','TikTok':'tiktok','YouTube':'youtube','Twitter':'twitter','Facebook':'facebook' };
+  return map[p] || '';
+}
+
+function _topicContentIcon(type) {
+  if (!type) return '';
+  if (type.includes('图集')) return '\u{1F5BC}\uFE0F 图集';
+  if (type.includes('视频')) return '\u{1F3AC} 视频';
+  return '\u{1F4F7} 图文';
+}
+
+function _topicSourceBadge(source) {
+  if (!source) return '<span class="topic-source-badge source-ai">AI分析</span>';
+  if (source === 'manual') return '<span class="topic-source-badge source-manual">手动</span>';
+  if (source === 'data' || source === 'analytics') return '<span class="topic-source-badge source-data">数据分析</span>';
+  return '<span class="topic-source-badge source-ai">AI分析</span>';
+}
+
+function _topicStatusLabel(status) {
+  const map = { pending:'待审', accepted:'已采纳', rejected:'已拒绝', used:'已使用' };
+  return map[status] || status || '待审';
+}
+
+function _topicStatusTag(status) {
+  const clsMap = { accepted:'tag-green', rejected:'tag-red', used:'tag-cyan', pending:'tag-yellow' };
+  const cls = clsMap[status] || 'tag-yellow';
+  return `<span class="tag ${cls}">${esc(_topicStatusLabel(status))}</span>`;
+}
+
 async function loadTopicSuggestions() {
   const container = document.getElementById('ai-tab-content');
   container.innerHTML = `
-    <div class="toolbar">
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px;">
       <button class="btn-primary" onclick="analyzeTopics()">💡 分析选题</button>
-      <select id="ai-topic-status-filter" onchange="aiTopicStatus=this.value;renderTopicSuggestions()">
+      <button class="btn-secondary" onclick="openTopicCreateModal()">✍️ 手动添加</button>
+      <button class="btn-secondary" onclick="seedTopicData()">🌱 生成示例数据</button>
+      <span style="display:inline-flex;align-items:center;gap:6px;margin-left:8px;font-size:12.5px;color:var(--text-muted);">筛选:</span>
+      <select id="ai-topic-status-filter" onchange="aiTopicStatus=this.value;renderTopicSuggestions()" style="min-width:110px">
         <option value="">全部状态</option>
         <option value="pending">待审</option>
         <option value="accepted">已采纳</option>
         <option value="rejected">已拒绝</option>
+        <option value="used">已使用</option>
+      </select>
+      <select id="ai-topic-sort" onchange="aiTopicSort=this.value;renderTopicSuggestions()" style="min-width:110px">
+        <option value="score">评分排序</option>
+        <option value="freshness">新鲜度排序</option>
+        <option value="trend">趋势相关排序</option>
+        <option value="time">时间排序</option>
       </select>
       <span class="spacer"></span>
+      <div id="ai-topic-stats" class="topic-stats-bar" style="margin-left:auto"></div>
     </div>
-    <div id="ai-topics-list"></div>`;
+    <div id="ai-topics-list"></div>
+    <!-- Topic Create Modal -->
+    <div class="modal-overlay" id="topic-create-modal">
+      <div class="modal modal-wide">
+        <div class="modal-header">
+          <h3>✍️ 手动添加选题</h3>
+          <button class="modal-close" onclick="closeTopicCreateModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>选题标题 <span style="color:var(--red)">*</span></label>
+            <input type="text" id="topic-form-title" placeholder="输入选题标题...">
+          </div>
+          <div class="form-group">
+            <label>描述</label>
+            <textarea id="topic-form-desc" rows="3" placeholder="选题描述和背景..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>关键词</label>
+              <input type="text" id="topic-form-keywords" placeholder="逗号分隔，如: 美食,探店,推荐">
+              <div class="form-hint">多个关键词用逗号分隔</div>
+            </div>
+            <div class="form-group">
+              <label>推荐标签</label>
+              <input type="text" id="topic-form-tags" placeholder="逗号分隔，如: 种草,测评">
+              <div class="form-hint">多个标签用逗号分隔</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>推荐平台</label>
+            <div class="topic-modal-platforms">
+              <label><input type="checkbox" name="topic-platform" value="小红书"><span>小红书</span></label>
+              <label><input type="checkbox" name="topic-platform" value="抖音"><span>抖音</span></label>
+              <label><input type="checkbox" name="topic-platform" value="B站"><span>B站</span></label>
+              <label><input type="checkbox" name="topic-platform" value="微博"><span>微博</span></label>
+              <label><input type="checkbox" name="topic-platform" value="Instagram"><span>Instagram</span></label>
+              <label><input type="checkbox" name="topic-platform" value="TikTok"><span>TikTok</span></label>
+              <label><input type="checkbox" name="topic-platform" value="YouTube"><span>YouTube</span></label>
+              <label><input type="checkbox" name="topic-platform" value="Twitter"><span>Twitter</span></label>
+              <label><input type="checkbox" name="topic-platform" value="Facebook"><span>Facebook</span></label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>内容类型</label>
+            <div class="topic-modal-radios">
+              <label><input type="radio" name="topic-content-type" value="图文" checked><span>📷 图文</span></label>
+              <label><input type="radio" name="topic-content-type" value="图集"><span>🖼️ 图集</span></label>
+              <label><input type="radio" name="topic-content-type" value="视频"><span>🎬 视频</span></label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>评分</label>
+            <div class="topic-score-slider">
+              <input type="range" id="topic-form-score" min="0" max="100" value="70" oninput="document.getElementById('topic-score-display').textContent=this.value">
+              <span class="score-display" id="topic-score-display">70</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="closeTopicCreateModal()">取消</button>
+          <button class="btn-primary" onclick="submitTopicSuggestion()">提交选题</button>
+        </div>
+      </div>
+    </div>`;
   await renderTopicSuggestions();
 }
 
@@ -3816,31 +4078,121 @@ async function renderTopicSuggestions() {
     if (aiTopicStatus) params.set('status', aiTopicStatus);
     const data = await API.get('/api/ai/topics/suggestions' + (params.toString() ? '?' + params : ''));
     const topics = Array.isArray(data) ? data : (data.suggestions || data.items || []);
-    if (topics.length === 0) {
-      listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">💡</div><p>暂无选题推荐，点击"分析选题"开始</p></div>';
+    _topicCache = topics;
+
+    // Update stats
+    loadTopicStats(topics);
+
+    // Sort
+    const sorted = [...topics];
+    if (aiTopicSort === 'score') sorted.sort((a, b) => (b.score || 0) - (a.score || 0));
+    else if (aiTopicSort === 'freshness') sorted.sort((a, b) => (b.freshness_score || 0) - (a.freshness_score || 0));
+    else if (aiTopicSort === 'trend') sorted.sort((a, b) => (b.trend_relevance || 0) - (a.trend_relevance || 0));
+    else if (aiTopicSort === 'time') sorted.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    if (sorted.length === 0) {
+      listEl.innerHTML = `<div class="topic-empty-state">
+        <div class="empty-icon">💡</div>
+        <h3>暂无选题推荐</h3>
+        <p>选题推荐模块可以通过AI智能分析当前热门趋势，为你推荐最佳内容选题。也可以手动添加选题进行管理和跟踪。</p>
+        <div class="empty-actions">
+          <button class="btn-primary" onclick="analyzeTopics()">💡 智能分析选题</button>
+          <button class="btn-secondary" onclick="seedTopicData()">🌱 生成示例数据</button>
+        </div>
+      </div>`;
       return;
     }
-    listEl.innerHTML = topics.map(t => {
+
+    listEl.innerHTML = sorted.map(t => {
       const score = t.score || 0;
-      const platforms = (t.suggested_platforms || []).map(p => `<span class="tag tag-blue">${esc(p)}</span>`).join(' ');
-      const tags = (t.suggested_tags || []).map(tg => `<span class="tag tag-cyan">${esc(tg)}</span>`).join(' ');
-      const statusCls = t.status === 'accepted' ? 'tag-green' : t.status === 'rejected' ? 'tag-red' : 'tag-yellow';
-      return `<div class="ai-topic-card">
+      const trendRel = t.trend_relevance || 0;
+      const freshness = t.freshness_score || 0;
+      const status = t.status || 'pending';
+
+      // Platform chips
+      const platforms = (t.suggested_platforms || []).map(p => {
+        const cls = _topicPlatformClass(p);
+        return `<span class="topic-platform-chip ${cls ? 'platform-' + cls : 'tag tag-blue'}">${esc(p)}</span>`;
+      }).join('');
+
+      // Keyword + tag chips
+      const keywords = (t.keywords || []).map(k => `<span class="tag tag-purple">${esc(k)}</span>`).join('');
+      const tags = (t.suggested_tags || []).map(tg => `<span class="tag tag-cyan">${esc(tg)}</span>`).join('');
+
+      // Content type
+      const contentType = t.suggested_content_type || t.content_type || '';
+      const contentTypeHtml = contentType ? `<span class="topic-content-type">${_topicContentIcon(contentType)}</span>` : '';
+
+      // Used link
+      const usedHtml = (status === 'used' && t.content_id) ? `<span class="topic-used-link">已关联 #${esc(String(t.content_id))}</span>` : '';
+
+      return `<div class="ai-topic-card status-${esc(status)}">
         <div class="topic-header">
           <div class="topic-title">${esc(t.topic || t.title || '未命名选题')}</div>
-          <span class="tag ${statusCls}">${esc(t.status || 'pending')}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            ${_topicSourceBadge(t.source || t.source_type)}
+            ${_topicStatusTag(status)}
+          </div>
         </div>
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">${esc(t.reason || t.description || '')}</div>
-        <div class="score-bar"><div class="score-bar-fill score-blue" style="width:${Math.min(score, 100)}%"></div></div>
-        <div style="font-size:12px;color:var(--text-muted)">评分: ${score}/100</div>
-        <div class="ai-tags">${platforms} ${tags}</div>
-        <div class="ai-card-actions">
-          ${t.status !== 'accepted' ? `<button class="btn-sm btn-gold" onclick="generateFromSuggestion(${t.id})">采纳并生成</button>` : ''}
-          ${t.status !== 'rejected' ? `<button class="btn-sm btn-danger" onclick="rejectSuggestion(${t.id})">拒绝</button>` : ''}
+        ${(t.description || t.reason) ? `<div class="topic-desc">${esc(t.description || t.reason)}</div>` : ''}
+        ${t.reasoning ? `<div class="topic-reasoning">${esc(t.reasoning)}</div>` : ''}
+        <div class="topic-scores">
+          <div class="score-row">
+            <span class="score-label">综合评分</span>
+            <div class="score-bar"><div class="score-bar-fill score-blue" style="width:${Math.min(score, 100)}%"></div></div>
+            <span class="score-val">${score}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">趋势相关</span>
+            <div class="score-bar"><div class="score-bar-fill score-green" style="width:${Math.min(trendRel, 100)}%"></div></div>
+            <span class="score-val">${trendRel}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">新鲜度</span>
+            <div class="score-bar"><div class="score-bar-fill score-orange" style="width:${Math.min(freshness, 100)}%"></div></div>
+            <span class="score-val">${freshness}</span>
+          </div>
+        </div>
+        <div class="topic-meta">
+          ${contentTypeHtml}
+          ${usedHtml}
+          ${t.created_at ? `<span class="meta-item" title="${esc(t.created_at)}">🕒 ${formatRelativeTime(t.created_at)}</span>` : ''}
+        </div>
+        ${(platforms || keywords || tags) ? `<div class="ai-tags" style="margin-top:6px">
+          <div class="topic-platform-chips">${platforms}</div>
+          ${keywords} ${tags}
+        </div>` : ''}
+        <div class="ai-card-actions" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-color)">
+          ${status !== 'accepted' && status !== 'used' ? `<button class="btn-sm btn-gold" onclick="generateFromSuggestion(${t.id})">采纳并生成</button>` : ''}
+          <button class="btn-sm btn-secondary" onclick="editSuggestion(${t.id})">编辑</button>
+          ${status !== 'rejected' ? `<button class="btn-sm btn-danger" onclick="rejectSuggestion(${t.id})">拒绝</button>` : ''}
+          <span class="spacer"></span>
+          <button class="btn-sm btn-ghost" style="color:var(--red);font-size:11.5px" onclick="deleteSuggestion(${t.id})">删除</button>
         </div>
       </div>`;
     }).join('');
   } catch(e) { listEl.innerHTML = '<div class="empty-state"><p>加载失败: ' + esc(e.message) + '</p></div>'; }
+}
+
+function loadTopicStats(topics) {
+  const statsEl = document.getElementById('ai-topic-stats');
+  if (!statsEl) return;
+  const arr = topics || _topicCache || [];
+  const total = arr.length;
+  const pending = arr.filter(t => (t.status || 'pending') === 'pending').length;
+  const accepted = arr.filter(t => t.status === 'accepted').length;
+  const rejected = arr.filter(t => t.status === 'rejected').length;
+  const used = arr.filter(t => t.status === 'used').length;
+  statsEl.innerHTML = `
+    <span class="stat-item">总 <span class="stat-num">${total}</span></span>
+    <span class="stat-divider"></span>
+    <span class="stat-item">待审 <span class="stat-num" style="color:var(--yellow)">${pending}</span></span>
+    <span class="stat-divider"></span>
+    <span class="stat-item">已采纳 <span class="stat-num" style="color:var(--green)">${accepted}</span></span>
+    <span class="stat-divider"></span>
+    <span class="stat-item">已拒绝 <span class="stat-num" style="color:var(--red)">${rejected}</span></span>
+    <span class="stat-divider"></span>
+    <span class="stat-item">已使用 <span class="stat-num" style="color:var(--cyan)">${used}</span></span>`;
 }
 
 async function analyzeTopics() {
@@ -3870,6 +4222,154 @@ async function rejectSuggestion(id) {
     toast('选题已拒绝', 'success');
     renderTopicSuggestions();
   } catch(e) { toast('操作失败: ' + e.message, 'error'); }
+}
+
+function deleteSuggestion(id) {
+  showConfirm('删除选题', `确定要删除选题 #${id} 吗？此操作不可撤销。`, async () => {
+    try {
+      await API.del('/api/ai/topics/suggestions/' + id);
+      toast('选题已删除', 'success');
+      renderTopicSuggestions();
+    } catch(e) { toast('删除失败: ' + e.message, 'error'); }
+  });
+}
+
+function editSuggestion(id) {
+  const t = _topicCache.find(x => x.id === id);
+  if (!t) { toast('未找到选题数据', 'error'); return; }
+  openTopicCreateModal();
+  // Pre-fill form
+  setTimeout(() => {
+    const titleEl = document.getElementById('topic-form-title');
+    const descEl = document.getElementById('topic-form-desc');
+    const kwEl = document.getElementById('topic-form-keywords');
+    const tagsEl = document.getElementById('topic-form-tags');
+    const scoreEl = document.getElementById('topic-form-score');
+    const scoreDisp = document.getElementById('topic-score-display');
+    if (titleEl) titleEl.value = t.topic || t.title || '';
+    if (descEl) descEl.value = t.description || t.reason || '';
+    if (kwEl) kwEl.value = (t.keywords || []).join(', ');
+    if (tagsEl) tagsEl.value = (t.suggested_tags || []).join(', ');
+    if (scoreEl) { scoreEl.value = t.score || 70; if (scoreDisp) scoreDisp.textContent = scoreEl.value; }
+    // Check platforms
+    document.querySelectorAll('input[name="topic-platform"]').forEach(cb => {
+      cb.checked = (t.suggested_platforms || []).includes(cb.value);
+    });
+    // Content type radio
+    const ct = t.suggested_content_type || t.content_type || '图文';
+    document.querySelectorAll('input[name="topic-content-type"]').forEach(r => { r.checked = r.value === ct; });
+    // Change modal title and submit to update mode
+    const modalHeader = document.querySelector('#topic-create-modal .modal-header h3');
+    if (modalHeader) modalHeader.textContent = '编辑选题 #' + id;
+    const submitBtn = document.querySelector('#topic-create-modal .modal-footer .btn-primary');
+    if (submitBtn) { submitBtn.textContent = '保存修改'; submitBtn.onclick = () => updateTopicSuggestion(id); }
+  }, 50);
+}
+
+async function updateTopicSuggestion(id) {
+  const title = (document.getElementById('topic-form-title') || {}).value || '';
+  if (!title.trim()) { toast('请输入选题标题', 'error'); return; }
+  const platforms = [];
+  document.querySelectorAll('input[name="topic-platform"]:checked').forEach(cb => platforms.push(cb.value));
+  let contentType = '图文';
+  document.querySelectorAll('input[name="topic-content-type"]').forEach(r => { if (r.checked) contentType = r.value; });
+  const kwRaw = (document.getElementById('topic-form-keywords') || {}).value || '';
+  const tagsRaw = (document.getElementById('topic-form-tags') || {}).value || '';
+  const payload = {
+    topic: title.trim(),
+    title: title.trim(),
+    description: ((document.getElementById('topic-form-desc') || {}).value || '').trim(),
+    keywords: kwRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+    suggested_tags: tagsRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+    suggested_platforms: platforms,
+    suggested_content_type: contentType,
+    score: parseInt((document.getElementById('topic-form-score') || {}).value) || 70
+  };
+  try {
+    showLoading();
+    await API.put('/api/ai/topics/suggestions/' + id, payload);
+    toast('选题已更新', 'success');
+    closeTopicCreateModal();
+    renderTopicSuggestions();
+  } catch(e) { toast('更新失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+function openTopicCreateModal() {
+  const modal = document.getElementById('topic-create-modal');
+  if (modal) {
+    modal.classList.add('show');
+    // Reset to create mode
+    const modalHeader = modal.querySelector('.modal-header h3');
+    if (modalHeader) modalHeader.textContent = '✍️ 手动添加选题';
+    const submitBtn = modal.querySelector('.modal-footer .btn-primary');
+    if (submitBtn) { submitBtn.textContent = '提交选题'; submitBtn.onclick = submitTopicSuggestion; }
+  }
+}
+
+function closeTopicCreateModal() {
+  const modal = document.getElementById('topic-create-modal');
+  if (modal) {
+    modal.classList.remove('show');
+    // Reset form
+    const titleEl = document.getElementById('topic-form-title');
+    const descEl = document.getElementById('topic-form-desc');
+    const kwEl = document.getElementById('topic-form-keywords');
+    const tagsEl = document.getElementById('topic-form-tags');
+    const scoreEl = document.getElementById('topic-form-score');
+    const scoreDisp = document.getElementById('topic-score-display');
+    if (titleEl) titleEl.value = '';
+    if (descEl) descEl.value = '';
+    if (kwEl) kwEl.value = '';
+    if (tagsEl) tagsEl.value = '';
+    if (scoreEl) scoreEl.value = 70;
+    if (scoreDisp) scoreDisp.textContent = '70';
+    document.querySelectorAll('input[name="topic-platform"]').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('input[name="topic-content-type"]').forEach((r, i) => { r.checked = i === 0; });
+  }
+}
+
+async function submitTopicSuggestion() {
+  const title = (document.getElementById('topic-form-title') || {}).value || '';
+  if (!title.trim()) { toast('请输入选题标题', 'error'); return; }
+  const platforms = [];
+  document.querySelectorAll('input[name="topic-platform"]:checked').forEach(cb => platforms.push(cb.value));
+  let contentType = '图文';
+  document.querySelectorAll('input[name="topic-content-type"]').forEach(r => { if (r.checked) contentType = r.value; });
+  const kwRaw = (document.getElementById('topic-form-keywords') || {}).value || '';
+  const tagsRaw = (document.getElementById('topic-form-tags') || {}).value || '';
+  const payload = {
+    topic: title.trim(),
+    title: title.trim(),
+    description: ((document.getElementById('topic-form-desc') || {}).value || '').trim(),
+    keywords: kwRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+    suggested_tags: tagsRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+    suggested_platforms: platforms,
+    suggested_content_type: contentType,
+    source: 'manual',
+    score: parseInt((document.getElementById('topic-form-score') || {}).value) || 70,
+    status: 'pending'
+  };
+  try {
+    showLoading();
+    await API.post('/api/ai/topics/suggestions', payload);
+    toast('选题已添加', 'success');
+    closeTopicCreateModal();
+    renderTopicSuggestions();
+  } catch(e) { toast('添加失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+async function seedTopicData() {
+  showConfirm('生成示例数据', '将生成一批示例选题数据用于测试和演示，确定继续？', async () => {
+    try {
+      showLoading();
+      await API.post('/api/ai/topics/suggestions/seed', {});
+      toast('示例数据已生成', 'success');
+      renderTopicSuggestions();
+    } catch(e) { toast('生成失败: ' + e.message, 'error'); }
+    finally { hideLoading(); }
+  });
 }
 
 /* --- AI Generate --- */

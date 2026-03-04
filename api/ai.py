@@ -255,6 +255,192 @@ def analyze_topics():
         return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
+@ai_bp.route("/api/ai/topics/stats", methods=["GET"])
+@require_auth
+def topic_suggestion_stats():
+    """Return topic suggestion counts grouped by status."""
+    try:
+        stats = topic_svc.get_stats()
+        return jsonify(stats), 200
+    except Exception as e:
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
+
+
+@ai_bp.route("/api/ai/topics/suggestions/seed", methods=["POST"])
+@require_auth
+def seed_topic_suggestions():
+    """Create a batch of high-quality demo topic suggestions for Chinese social media."""
+    try:
+        seed_data = [
+            {
+                "topic": "春季穿搭灵感分享",
+                "description": "分享春季时尚穿搭技巧，包括色彩搭配、单品推荐和不同场景的穿搭方案",
+                "keywords": ["春季穿搭", "时尚搭配", "OOTD", "春装推荐", "色彩搭配"],
+                "suggested_tags": ["穿搭", "时尚", "春季", "OOTD", "搭配灵感"],
+                "suggested_platforms": ["xiaohongshu", "douyin", "weibo"],
+                "suggested_content_type": "image_carousel",
+                "score": 88,
+                "source_type": "manual",
+                "reasoning": "春季是换季高峰，穿搭类内容搜索量大幅上升，适合图文种草",
+            },
+            {
+                "topic": "健康早餐一周食谱",
+                "description": "为上班族和学生设计的一周七天健康早餐计划，简单快手又营养均衡",
+                "keywords": ["健康早餐", "一周食谱", "快手早餐", "营养搭配", "减脂餐"],
+                "suggested_tags": ["早餐", "食谱", "健康饮食", "减脂", "快手菜"],
+                "suggested_platforms": ["xiaohongshu", "douyin", "bilibili"],
+                "suggested_content_type": "video",
+                "score": 92,
+                "source_type": "manual",
+                "reasoning": "健康饮食持续热门，早餐类内容互动率高，适合视频展示制作过程",
+            },
+            {
+                "topic": "居家收纳神器推荐",
+                "description": "盘点高性价比的居家收纳好物，从厨房到衣柜的全屋收纳解决方案",
+                "keywords": ["收纳", "居家好物", "整理收纳", "收纳神器", "家居"],
+                "suggested_tags": ["收纳", "居家", "好物推荐", "家居整理", "断舍离"],
+                "suggested_platforms": ["xiaohongshu", "douyin", "taobao"],
+                "suggested_content_type": "image_carousel",
+                "score": 85,
+                "source_type": "manual",
+                "reasoning": "居家收纳内容种草属性强，转化率高，适合图文对比展示",
+            },
+            {
+                "topic": "短视频拍摄技巧教学",
+                "description": "从手机摄影到剪辑的全流程短视频制作教程，零基础也能拍出高质量内容",
+                "keywords": ["短视频", "拍摄技巧", "手机摄影", "视频剪辑", "运镜"],
+                "suggested_tags": ["拍摄教程", "短视频", "摄影技巧", "剪辑", "创作者"],
+                "suggested_platforms": ["douyin", "bilibili", "kuaishou"],
+                "suggested_content_type": "video",
+                "score": 90,
+                "source_type": "manual",
+                "reasoning": "创作者生态持续扩大，拍摄教学类内容收藏率极高，长尾流量好",
+            },
+            {
+                "topic": "热门美妆新品测评",
+                "description": "测评当季热门美妆护肤新品，包括真实使用感受、成分分析和性价比对比",
+                "keywords": ["美妆测评", "新品", "护肤", "化妆品", "成分党"],
+                "suggested_tags": ["美妆", "测评", "护肤", "新品", "好物分享"],
+                "suggested_platforms": ["xiaohongshu", "douyin", "bilibili"],
+                "suggested_content_type": "video",
+                "score": 91,
+                "source_type": "manual",
+                "reasoning": "美妆测评是小红书和抖音核心品类，商业变现潜力大",
+            },
+            {
+                "topic": "旅行Vlog拍摄指南",
+                "description": "旅行Vlog从策划到发布的完整指南，包括设备选择、叙事结构和后期制作",
+                "keywords": ["旅行Vlog", "旅行攻略", "Vlog教程", "旅拍", "自由行"],
+                "suggested_tags": ["旅行", "Vlog", "旅拍", "攻略", "自由行"],
+                "suggested_platforms": ["bilibili", "douyin", "xiaohongshu"],
+                "suggested_content_type": "video",
+                "score": 87,
+                "source_type": "manual",
+                "reasoning": "旅行内容四季常青，Vlog形式粉丝粘性高，适合长期系列化运营",
+            },
+            {
+                "topic": "数码产品选购攻略",
+                "description": "帮助消费者选择合适的数码产品，涵盖手机、耳机、平板等热门品类的对比评测",
+                "keywords": ["数码", "选购攻略", "手机推荐", "数码测评", "性价比"],
+                "suggested_tags": ["数码", "测评", "科技", "选购指南", "性价比"],
+                "suggested_platforms": ["bilibili", "douyin", "zhihu"],
+                "suggested_content_type": "video",
+                "score": 83,
+                "source_type": "manual",
+                "reasoning": "数码品类用户决策周期长，攻略型内容搜索流量大，广告价值高",
+            },
+            {
+                "topic": "副业赚钱经验分享",
+                "description": "分享真实可行的副业赚钱经验，包括自媒体、电商、技能变现等方向",
+                "keywords": ["副业", "赚钱", "自媒体", "兼职", "技能变现"],
+                "suggested_tags": ["副业", "赚钱", "自媒体", "经验分享", "个人成长"],
+                "suggested_platforms": ["xiaohongshu", "douyin", "bilibili", "zhihu"],
+                "suggested_content_type": "image_carousel",
+                "score": 95,
+                "source_type": "manual",
+                "reasoning": "副业和赚钱话题永远有流量，用户互动意愿强，容易引发讨论和收藏",
+            },
+            {
+                "topic": "职场沟通话术大全",
+                "description": "整理职场中常见的沟通场景和高情商话术，帮助职场新人提升沟通能力",
+                "keywords": ["职场", "沟通技巧", "话术", "职场新人", "高情商"],
+                "suggested_tags": ["职场", "沟通", "话术", "职场成长", "干货"],
+                "suggested_platforms": ["xiaohongshu", "douyin", "zhihu"],
+                "suggested_content_type": "image_carousel",
+                "score": 78,
+                "source_type": "manual",
+                "reasoning": "职场内容受众广泛，话术类内容收藏率高，适合图文形式呈现",
+            },
+            {
+                "topic": "宠物日常记录与养护",
+                "description": "记录宠物有趣日常，分享科学养宠知识，涵盖喂养、训练、健康护理",
+                "keywords": ["宠物", "猫咪", "狗狗", "养宠", "萌宠日常"],
+                "suggested_tags": ["宠物", "萌宠", "养猫", "养狗", "日常"],
+                "suggested_platforms": ["douyin", "xiaohongshu", "bilibili"],
+                "suggested_content_type": "video",
+                "score": 86,
+                "source_type": "manual",
+                "reasoning": "萌宠内容完播率高、互动性强，容易获得平台推荐流量",
+            },
+        ]
+
+        created_ids = []
+        for item in seed_data:
+            try:
+                sid = topic_svc.create(item)
+                created_ids.append(sid)
+            except Exception as e:
+                logger.warning("Failed to create seed topic: %s", e)
+
+        return jsonify({
+            "message": f"成功创建 {len(created_ids)} 条示例选题",
+            "created_ids": created_ids,
+            "count": len(created_ids),
+        }), 201
+    except Exception as e:
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
+
+
+@ai_bp.route("/api/ai/topics/suggestions", methods=["POST"])
+@require_auth
+def create_suggestion():
+    """Manually create a topic suggestion."""
+    try:
+        data = request.get_json(force=True)
+        if not data or not data.get("topic"):
+            return jsonify({"error": "topic is required"}), 400
+
+        allowed_content_types = {"image_single", "image_carousel", "video"}
+        content_type = data.get("suggested_content_type", "image_single")
+        if content_type not in allowed_content_types:
+            return jsonify({"error": f"suggested_content_type must be one of {sorted(allowed_content_types)}"}), 400
+
+        score = data.get("score", 0)
+        if not isinstance(score, (int, float)) or score < 0 or score > 100:
+            return jsonify({"error": "score must be a number between 0 and 100"}), 400
+
+        suggestion_data = {
+            "topic": data["topic"],
+            "description": data.get("description", ""),
+            "keywords": data.get("keywords", []),
+            "suggested_tags": data.get("suggested_tags", []),
+            "suggested_platforms": data.get("suggested_platforms", []),
+            "suggested_content_type": content_type,
+            "score": score,
+            "source_type": data.get("source_type", "manual"),
+            "status": "pending",
+        }
+
+        sid = topic_svc.create(suggestion_data)
+        created = topic_svc.get(sid)
+        return jsonify(created), 201
+    except Exception as e:
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
+
+
 @ai_bp.route("/api/ai/topics/suggestions", methods=["GET"])
 @require_auth
 def list_suggestions():
@@ -298,6 +484,20 @@ def update_suggestion(suggestion_id):
         topic_svc.update_status(suggestion_id, data["status"])
         updated = topic_svc.get(suggestion_id)
         return jsonify(updated), 200
+    except Exception as e:
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
+
+
+@ai_bp.route("/api/ai/topics/suggestions/<int:suggestion_id>", methods=["DELETE"])
+@require_auth
+def delete_suggestion(suggestion_id):
+    """Delete a topic suggestion."""
+    try:
+        ok = topic_svc.delete(suggestion_id)
+        if not ok:
+            return jsonify({"error": "suggestion not found"}), 404
+        return jsonify({"message": "deleted"}), 200
     except Exception as e:
         logger.exception("Unexpected error in ai API")
         return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
