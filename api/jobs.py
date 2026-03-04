@@ -2,10 +2,15 @@
 Blueprint for Job, JobLog, and Metric REST APIs.
 """
 
+import logging
+import sqlite3
+
 from flask import Blueprint, request, jsonify
 from config import DB_PATH
 from services.job_service import JobService, JobLogService, MetricService
 from api.auth import require_auth
+
+logger = logging.getLogger(__name__)
 
 jobs_bp = Blueprint("jobs", __name__)
 job_svc = JobService(DB_PATH)
@@ -33,8 +38,12 @@ def create_job():
         job_id = job_svc.create(data)
         job = job_svc.get(job_id)
         return jsonify(job), 201
+    except sqlite3.IntegrityError as e:
+        logger.warning("FK constraint violation creating job: %s", e)
+        return jsonify({"error": "referenced account_id or content_id does not exist"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs/batch", methods=["POST"])
@@ -50,15 +59,23 @@ def batch_create_jobs():
         if not isinstance(account_ids, list) or len(account_ids) == 0:
             return jsonify({"error": "account_ids must be a non-empty list"}), 400
 
+        scheduled_at = data.get("scheduled_at")
+        initial_state = "queued" if not scheduled_at else "draft"
+
         created_ids = job_svc.batch_create(
             content_id=data["content_id"],
             account_ids=account_ids,
             variant_id=data.get("variant_id"),
-            scheduled_at=data.get("scheduled_at"),
+            scheduled_at=scheduled_at,
+            initial_state=initial_state,
         )
         return jsonify({"created_ids": created_ids, "count": len(created_ids)}), 201
+    except sqlite3.IntegrityError as e:
+        logger.warning("FK constraint violation in batch create jobs: %s", e)
+        return jsonify({"error": "referenced account_id or content_id does not exist"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs", methods=["GET"])
@@ -82,7 +99,8 @@ def list_jobs():
         )
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs/<int:job_id>", methods=["GET"])
@@ -101,7 +119,8 @@ def get_job(job_id):
         job["latest_metric"] = latest_metric
         return jsonify(job), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── State transitions ────────────────────────────────────────────────────
@@ -124,7 +143,8 @@ def transition_job(job_id):
         updated = job_svc.get(job_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs/<int:job_id>/cancel", methods=["POST"])
@@ -139,7 +159,8 @@ def cancel_job(job_id):
         updated = job_svc.get(job_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs/<int:job_id>/retry", methods=["POST"])
@@ -154,7 +175,8 @@ def retry_job(job_id):
         updated = job_svc.get(job_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs/<int:job_id>", methods=["DELETE"])
@@ -167,7 +189,8 @@ def delete_job(job_id):
             return jsonify({"error": "job not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── Job Logs ─────────────────────────────────────────────────────────────
@@ -191,7 +214,8 @@ def add_job_log(job_id):
         log_id = log_svc.add(data)
         return jsonify({"id": log_id, "job_id": job_id}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs/<int:job_id>/logs", methods=["GET"])
@@ -206,7 +230,8 @@ def get_job_logs(job_id):
         logs = log_svc.list_by_job(job_id)
         return jsonify(logs), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── Metrics ──────────────────────────────────────────────────────────────
@@ -229,7 +254,8 @@ def record_metric(job_id):
         metric_id = metric_svc.record(data)
         return jsonify({"id": metric_id, "job_id": job_id}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @jobs_bp.route("/api/jobs/<int:job_id>/metrics", methods=["GET"])
@@ -244,4 +270,5 @@ def get_job_metrics(job_id):
         metrics = metric_svc.list_by_job(job_id)
         return jsonify(metrics), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in jobs API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500

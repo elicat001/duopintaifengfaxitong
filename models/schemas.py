@@ -100,10 +100,6 @@ class LoginState(str, Enum):
 
 class CredentialType(str, Enum):
     COOKIE = "cookie"
-    OAUTH_TOKEN = "oauth_token"
-    USERNAME_PASSWORD = "username_password"
-    SESSION = "session"
-    API_KEY = "api_key"
 
 
 class ProxyType(str, Enum):

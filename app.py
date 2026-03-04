@@ -27,6 +27,16 @@ from models.database import init_database
 # Initialize database
 init_database(DB_PATH)
 
+# Start background job executor
+from config import JOB_EXECUTOR_ENABLED, JOB_EXECUTOR_POLL_INTERVAL
+if JOB_EXECUTOR_ENABLED:
+    from services.job_executor import JobExecutor
+    _job_executor = JobExecutor(
+        db_path=DB_PATH,
+        poll_interval=JOB_EXECUTOR_POLL_INTERVAL,
+    )
+    _job_executor.start()
+
 # Create app
 app = Flask(__name__, static_folder="static", static_url_path="")
 app.json.ensure_ascii = False  # Return Chinese characters directly, not \uXXXX escapes
@@ -75,6 +85,35 @@ def index():
     resp = make_response(send_from_directory(app.static_folder, "index.html"))
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return resp
+
+
+def _check_auth_token():
+    """Check auth from header or query param (for img src tags)."""
+    from flask import request as _req, g
+    from api.auth import decode_token
+    token = None
+    auth_header = _req.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    else:
+        token = _req.args.get("token")
+    if not token:
+        return False
+    try:
+        payload = decode_token(token)
+        g.user_id = payload["user_id"]
+        return True
+    except Exception:
+        return False
+
+
+@app.route("/api/screenshots/<path:filename>")
+def serve_screenshot(filename):
+    """Serve screenshot images from the screenshots directory."""
+    if not _check_auth_token():
+        return jsonify({"error": "需要认证"}), 401
+    from config import BROWSER_SCREENSHOT_DIR
+    return send_from_directory(BROWSER_SCREENSHOT_DIR, filename)
 
 
 if __name__ == "__main__":

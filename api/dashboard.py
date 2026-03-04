@@ -2,12 +2,26 @@
 Blueprint for Dashboard, Stats, and Auth Token APIs.
 """
 
+import logging
+import time
+
 from flask import Blueprint, request, jsonify
+from werkzeug.security import generate_password_hash, check_password_hash
 from config import DB_PATH, ADMIN_USERNAME, ADMIN_PASSWORD
 from models.database import get_connection
 from api.auth import generate_token, require_auth
 
+logger = logging.getLogger(__name__)
+
 dashboard_bp = Blueprint("dashboard", __name__)
+
+# ── Password hash (computed once at import time) ─────────────────────────
+_ADMIN_PASSWORD_HASH = generate_password_hash(ADMIN_PASSWORD)
+
+# ── In-memory rate limiter for login ─────────────────────────────────────
+_LOGIN_RATE_LIMIT = {}          # IP -> (fail_count, first_fail_time)
+_MAX_LOGIN_FAILURES = 5
+_RATE_LIMIT_WINDOW = 15 * 60   # 15 minutes in seconds
 
 
 # ── helpers ──────────────────────────────────────────────────────────────
@@ -118,7 +132,8 @@ def dashboard():
             "recent_contents": recent_contents,
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("dashboard error")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── Stats (simplified) ──────────────────────────────────────────────────
@@ -137,7 +152,8 @@ def stats():
 
         return jsonify(result), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("stats error")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── Auth Token ──────────────────────────────────────────────────────────
@@ -147,6 +163,20 @@ def stats():
 def auth_token():
     """Generate a JWT token. Simplified: only admin/admin is accepted."""
     try:
+        client_ip = request.remote_addr or "unknown"
+
+        # ── Rate-limit check ────────────────────────────────────────
+        now = time.time()
+        if client_ip in _LOGIN_RATE_LIMIT:
+            fail_count, first_fail_time = _LOGIN_RATE_LIMIT[client_ip]
+            if now - first_fail_time > _RATE_LIMIT_WINDOW:
+                # Window expired, reset
+                del _LOGIN_RATE_LIMIT[client_ip]
+            elif fail_count >= _MAX_LOGIN_FAILURES:
+                remaining = int(_RATE_LIMIT_WINDOW - (now - first_fail_time))
+                logger.warning("Rate limit hit for IP %s, %d seconds remaining", client_ip, remaining)
+                return jsonify({"error": f"登录尝试过多，请在{remaining}秒后重试"}), 429
+
         data = request.get_json(force=True)
         if not data:
             return jsonify({"error": "request body is required"}), 400
@@ -154,10 +184,21 @@ def auth_token():
         username = data.get("username", "")
         password = data.get("password", "")
 
-        if username != ADMIN_USERNAME or password != ADMIN_PASSWORD:
+        if username != ADMIN_USERNAME or not check_password_hash(_ADMIN_PASSWORD_HASH, password):
+            # Record failed attempt
+            if client_ip in _LOGIN_RATE_LIMIT:
+                fail_count, first_fail_time = _LOGIN_RATE_LIMIT[client_ip]
+                _LOGIN_RATE_LIMIT[client_ip] = (fail_count + 1, first_fail_time)
+            else:
+                _LOGIN_RATE_LIMIT[client_ip] = (1, now)
+            logger.warning("Failed login attempt for user '%s' from IP %s", username, client_ip)
             return jsonify({"error": "invalid credentials"}), 401
+
+        # Successful login — clear any rate-limit tracking for this IP
+        _LOGIN_RATE_LIMIT.pop(client_ip, None)
 
         token = generate_token(user_id=1, role="admin")
         return jsonify({"token": token, "user": {"id": 1, "username": "admin", "role": "admin"}}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("auth_token error")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500

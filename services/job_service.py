@@ -162,6 +162,7 @@ class JobService:
         account_ids: list,
         variant_id: int = None,
         scheduled_at: str = None,
+        initial_state: str = "draft",
     ) -> List[int]:
         """Create one job per account in a single transaction.
 
@@ -171,6 +172,8 @@ class JobService:
         try:
             now = _now()
             created_ids: List[int] = []
+
+            next_run_at = now if initial_state == "queued" else None
 
             for acct_id in account_ids:
                 idempotency_key = str(uuid.uuid4())
@@ -190,10 +193,10 @@ class JobService:
                         content_id,
                         variant_id,
                         scheduled_at,
-                        "draft",
+                        initial_state,
                         0,
                         5,
-                        None,
+                        next_run_at,
                         "",
                         "",
                         idempotency_key,
@@ -222,6 +225,7 @@ class JobService:
         * For ``failed_retryable -> queued`` also checks attempt_count < max_attempts
           and increments attempt_count.
         * Automatically updates ``updated_at`` and ``next_run_at``.
+        * Uses atomic UPDATE WHERE state=current to prevent race conditions.
 
         Returns True if the transition was applied, False otherwise.
         """
@@ -256,19 +260,20 @@ class JobService:
             if new_state == "queued":
                 next_run_at = now
 
-            conn.execute(
+            # Atomic: only update if state hasn't changed since we read it
+            cur = conn.execute(
                 """
                 UPDATE jobs
                 SET state = ?,
                     attempt_count = ?,
                     next_run_at = ?,
                     updated_at = ?
-                WHERE id = ?
+                WHERE id = ? AND state = ?
                 """,
-                (new_state, attempt_count, next_run_at, now, job_id),
+                (new_state, attempt_count, next_run_at, now, job_id, current_state),
             )
             conn.commit()
-            return True
+            return cur.rowcount > 0
         finally:
             conn.close()
 

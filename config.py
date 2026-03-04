@@ -51,6 +51,10 @@ SCORE_THRESHOLDS = {
 # Scheduling
 SCHEDULE_INTERVAL_SECONDS = 3600
 
+# Job executor
+JOB_EXECUTOR_POLL_INTERVAL = int(os.environ.get("JOB_EXECUTOR_POLL_INTERVAL", "10"))
+JOB_EXECUTOR_ENABLED = os.environ.get("JOB_EXECUTOR_ENABLED", "true").lower() == "true"
+
 # AI defaults
 AI_DEFAULT_PROVIDER = "anthropic"
 AI_DEFAULT_MODEL = "claude-sonnet-4-20250514"

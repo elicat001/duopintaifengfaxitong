@@ -197,9 +197,10 @@ class BrowserService:
         """Create a new BrowserContext with proxy and fingerprint."""
         await self._ensure_browser()
 
-        if account_id in self._contexts:
-            logger.debug("Reusing existing context for account %d", account_id)
-            return self._contexts[account_id]
+        with self._lock:
+            if account_id in self._contexts:
+                logger.debug("Reusing existing context for account %d", account_id)
+                return self._contexts[account_id]
 
         fp = fingerprint or {}
         user_agents = self._config.get("user_agents", [])
@@ -240,7 +241,8 @@ class BrowserService:
             Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
         """)
 
-        self._contexts[account_id] = context
+        with self._lock:
+            self._contexts[account_id] = context
         logger.info("Browser context created for account %d", account_id)
         return context
 
@@ -250,7 +252,8 @@ class BrowserService:
         Uses try/finally to guarantee the context and page are removed from
         tracking dicts even if close() raises (Issue 1).
         """
-        page = self._pages.pop(account_id, None)
+        with self._lock:
+            page = self._pages.pop(account_id, None)
         if page:
             try:
                 await page.close()
@@ -261,7 +264,8 @@ class BrowserService:
                 # Ensure page reference is released even on error
                 page = None
 
-        ctx = self._contexts.pop(account_id, None)
+        with self._lock:
+            ctx = self._contexts.pop(account_id, None)
         if ctx:
             try:
                 await ctx.close()
@@ -274,11 +278,13 @@ class BrowserService:
 
     async def _new_page(self, account_id: int):
         """Create a new page in the account's context."""
-        ctx = self._contexts.get(account_id)
+        with self._lock:
+            ctx = self._contexts.get(account_id)
         if not ctx:
             raise RuntimeError(f"No browser context for account {account_id}")
         page = await ctx.new_page()
-        self._pages[account_id] = page
+        with self._lock:
+            self._pages[account_id] = page
         logger.debug("New page created for account %d", account_id)
         return page
 

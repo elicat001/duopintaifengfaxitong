@@ -1,9 +1,13 @@
 """Blueprint for Account Login Status REST APIs."""
 
+import logging
+
 from flask import Blueprint, request, jsonify
 from config import DB_PATH
 from services.login_status_service import LoginStatusService
 from api.auth import require_auth
+
+logger = logging.getLogger(__name__)
 
 login_status_bp = Blueprint("login_status", __name__)
 login_svc = LoginStatusService(DB_PATH)
@@ -17,7 +21,8 @@ def get_login_status(account_id):
         status = login_svc.get_or_create(account_id)
         return jsonify(status), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in login_status API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @login_status_bp.route("/api/accounts/<int:account_id>/login-status/check", methods=["POST"])
@@ -42,7 +47,8 @@ def trigger_login_check(account_id):
                                    reason=data.get("failure_reason", ""))
         return jsonify(result), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in login_status API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @login_status_bp.route("/api/accounts/<int:account_id>/login-logs", methods=["GET"])
@@ -54,7 +60,8 @@ def get_login_logs(account_id):
         logs = login_svc.get_logs(account_id, limit=limit)
         return jsonify(logs), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in login_status API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @login_status_bp.route("/api/login-status/summary", methods=["GET"])
@@ -65,7 +72,8 @@ def login_status_summary():
         stats = login_svc.get_summary_stats()
         return jsonify(stats), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in login_status API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @login_status_bp.route("/api/login-status/failing", methods=["GET"])
@@ -76,7 +84,8 @@ def list_failing_accounts():
         items = login_svc.list_failing()
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in login_status API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @login_status_bp.route("/api/login-status/needing-check", methods=["GET"])
@@ -87,7 +96,8 @@ def list_needing_check():
         items = login_svc.list_needing_check()
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in login_status API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @login_status_bp.route("/api/login-status/check-all", methods=["POST"])
@@ -106,4 +116,5 @@ def check_all_logins():
             results.append(result)
         return jsonify({"checked": len(results), "results": results}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in login_status API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500

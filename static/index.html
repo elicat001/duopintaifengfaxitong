@@ -58,6 +58,10 @@
   --font-display: 'DM Sans', 'Noto Sans SC', sans-serif;
   --font-body: 'DM Sans', 'Noto Sans SC', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  /* ── Aliases for shorthand variable names ── */
+  --muted: var(--text-muted);
+  --primary: var(--blue);
+  --border: var(--border-color);
 }
 
 /* ── Theme: Midnight Blue (default, brighter) ── */
@@ -1145,6 +1149,9 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
       <div class="nav-item" data-tab="policies" onclick="navigate('policies')">
         <span class="nav-icon">⚙️</span><span>策略配置</span>
       </div>
+      <div class="nav-item" data-tab="publish" onclick="navigate('publish')">
+        <span class="nav-icon">📤</span><span>发布文章</span>
+      </div>
       <div class="nav-item" data-tab="jobs" onclick="navigate('jobs')">
         <span class="nav-icon">🚀</span><span>任务中心</span>
       </div>
@@ -1268,6 +1275,43 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
         <button class="btn-primary" onclick="openPolicyModal()">+ 新建策略</button>
       </div>
       <div class="policy-grid" id="policies-grid"></div>
+    </div>
+
+    <!-- ===== PUBLISH ===== -->
+    <div class="tab-page" id="page-publish">
+      <div class="page-header"><h1>📤 发布文章</h1><p>选择内容和目标账号，一键发布到各平台</p></div>
+      <div class="card" style="padding:24px">
+        <div class="form-group">
+          <label>选择内容 *</label>
+          <select id="pub-content" style="width:100%" onchange="onPubContentChange()">
+            <option value="">请选择要发布的内容</option>
+          </select>
+        </div>
+        <div id="pub-content-preview" style="display:none;margin-bottom:20px;padding:16px;border-radius:10px;background:rgba(79,143,255,0.06);border:1px solid rgba(79,143,255,0.15)">
+        </div>
+        <div class="form-group">
+          <label>选择变体</label>
+          <select id="pub-variant" style="width:100%">
+            <option value="">不指定变体（使用原始内容）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>选择目标账号 *</label>
+          <div style="margin-bottom:8px">
+            <button class="btn-secondary" style="font-size:12px;padding:4px 10px;margin-right:6px" onclick="pubSelectAll()">全选</button>
+            <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="pubDeselectAll()">取消全选</button>
+          </div>
+          <div class="checkbox-list" id="pub-accounts-list" style="max-height:300px;overflow-y:auto"></div>
+        </div>
+        <div class="form-group">
+          <label>计划时间</label>
+          <input type="datetime-local" id="pub-scheduled" style="width:100%">
+          <div class="form-hint">留空则立即执行</div>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:10px">
+          <button class="btn-primary" style="font-size:15px;padding:10px 32px" onclick="submitPublish()">📤 立即发布</button>
+        </div>
+      </div>
     </div>
 
     <!-- ===== JOBS ===== -->
@@ -1404,6 +1448,20 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
       </div>
       <div class="form-group"><label>文案</label><textarea id="vc-caption" placeholder="变体文案内容"></textarea></div>
       <div class="form-group"><label>话题标签</label><input type="text" id="vc-hashtags" placeholder="用逗号分隔"><div class="form-hint">如: #AI, #教程</div></div>
+      <div class="form-group">
+        <label>上传图片/视频</label>
+        <div id="vc-upload-zone" style="border:2px dashed var(--border-color);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg-secondary)"
+          onclick="document.getElementById('vc-file-input').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--primary)'"
+          ondragleave="this.style.borderColor='var(--border-color)'"
+          ondrop="event.preventDefault();this.style.borderColor='var(--border-color)';handleVariantFiles(event.dataTransfer.files)">
+          <div style="font-size:28px;margin-bottom:8px;opacity:.5">+</div>
+          <div style="color:var(--muted);font-size:13px">点击或拖拽上传图片/视频</div>
+          <div style="color:var(--muted);font-size:11px;margin-top:4px">支持 PNG, JPG, GIF, WEBP, MP4, MOV 等格式，最大 200MB</div>
+        </div>
+        <input type="file" id="vc-file-input" multiple accept="image/*,video/*" style="display:none" onchange="handleVariantFiles(this.files)">
+        <div id="vc-media-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('variants-modal')">关闭</button>
@@ -1735,6 +1793,10 @@ const API = {
     }
     clearTimeout(timer);
     if (resp.status === 401) { doLogout(); throw new Error('认证已过期'); }
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('服务器返回非JSON响应 (' + resp.status + ')，请确认后端已重启');
+    }
     const data = await resp.json();
     if (!resp.ok) {
       const errMsg = data.error || data.message || data.detail || '请求失败';
@@ -1748,6 +1810,24 @@ const API = {
   post(url, body) { return this.request('POST', url, body); },
   put(url, body) { return this.request('PUT', url, body); },
   del(url) { return this.request('DELETE', url); },
+
+  async upload(url, files, timeoutMs = 120000) {
+    const fd = new FormData();
+    for (const f of files) fd.append('files', f);
+    const opts = { method: 'POST', body: fd, headers: {} };
+    if (this.token) opts.headers['Authorization'] = 'Bearer ' + this.token;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    opts.signal = controller.signal;
+    let resp;
+    try { resp = await fetch(url, opts); }
+    catch(e) { clearTimeout(timer); if (e.name==='AbortError') throw new Error('上传超时'); throw e; }
+    clearTimeout(timer);
+    if (resp.status === 401) { doLogout(); throw new Error('认证已过期'); }
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || '上传失败');
+    return data;
+  },
 };
 
 /* ========================================================
@@ -1759,7 +1839,7 @@ function hideLoading() { document.getElementById('loading-overlay').classList.re
 function toast(message, type = 'info') {
   const el = document.createElement('div');
   el.className = 'toast toast-' + type;
-  el.innerHTML = message;
+  el.textContent = message;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 300); }, 3500);
 }
@@ -1893,6 +1973,7 @@ function navigate(tab) {
     case 'ai': loadAiDashboard(); break;
     case 'accounts': loadAccountGroups(); renderAcctTab(); break;
     case 'policies': loadPolicies(); break;
+    case 'publish': loadPublishPage(); break;
     case 'jobs': initJobFilters(); loadJobs(); break;
   }
 }
@@ -2124,12 +2205,60 @@ function deleteContent(id) {
 /* ========================================================
    VARIANTS
    ======================================================== */
+// Track uploaded asset IDs for variant creation
+let _vcUploadedAssets = []; // [{id, asset_type, storage_url, original_name}]
+
+function handleVariantFiles(fileList) {
+  if (!fileList || fileList.length === 0) return;
+  const files = Array.from(fileList);
+  const preview = document.getElementById('vc-media-preview');
+  // Show uploading indicator
+  files.forEach(f => {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'vc-upload-placeholder';
+    placeholder.style.cssText = 'width:80px;height:80px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)';
+    placeholder.textContent = '上传中...';
+    placeholder.dataset.name = f.name;
+    preview.appendChild(placeholder);
+  });
+  // Upload
+  API.upload('/api/upload', files).then(results => {
+    // Remove placeholders
+    preview.querySelectorAll('.vc-upload-placeholder').forEach(p => p.remove());
+    results.forEach(asset => {
+      if (asset.error) { toast(asset.error, 'error'); return; }
+      _vcUploadedAssets.push(asset);
+      const item = document.createElement('div');
+      item.style.cssText = 'position:relative;width:80px;height:80px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color)';
+      item.dataset.assetId = asset.id;
+      if (asset.asset_type === 'video') {
+        item.innerHTML = `<div style="width:100%;height:100%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)">VIDEO</div>`;
+      } else {
+        item.innerHTML = `<img src="/api/uploads/${asset.storage_url}?token=${encodeURIComponent(state.token)}" style="width:100%;height:100%;object-fit:cover">`;
+      }
+      item.innerHTML += `<div onclick="removeVariantAsset(${asset.id},this.parentElement)" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer">&times;</div>`;
+      preview.appendChild(item);
+    });
+  }).catch(e => {
+    preview.querySelectorAll('.vc-upload-placeholder').forEach(p => p.remove());
+    toast('上传失败: ' + e.message, 'error');
+  });
+}
+
+function removeVariantAsset(assetId, el) {
+  _vcUploadedAssets = _vcUploadedAssets.filter(a => a.id !== assetId);
+  if (el) el.remove();
+}
+
 async function openVariantsModal(contentId, title) {
   document.getElementById('var-content-id').value = contentId;
   document.getElementById('variants-modal-title').textContent = `变体管理 - ${title || '内容#' + contentId}`;
   document.getElementById('vc-headline').value = '';
   document.getElementById('vc-caption').value = '';
   document.getElementById('vc-hashtags').value = '';
+  _vcUploadedAssets = [];
+  document.getElementById('vc-media-preview').innerHTML = '';
+  document.getElementById('vc-file-input').value = '';
   openModal('variants-modal');
   await loadVariants(contentId);
 }
@@ -2143,14 +2272,19 @@ async function loadVariants(contentId) {
       container.innerHTML = '<div class="empty-state" style="padding:20px"><p>暂无变体</p></div>';
       return;
     }
-    let html = '<table><thead><tr><th>ID</th><th>标题</th><th>平台</th><th>文案</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>ID</th><th>标题</th><th>平台</th><th>文案</th><th>媒体</th><th>状态</th><th>操作</th></tr></thead><tbody>';
     variants.forEach(v => {
       const statusCls = v.status === 'ready' ? 'tag-green' : v.status === 'blocked' ? 'tag-red' : 'tag-gray';
+      let mediaIds = v.media_asset_ids || [];
+      if (typeof mediaIds === 'string') try { mediaIds = JSON.parse(mediaIds); } catch { mediaIds = []; }
+      const mediaCnt = Array.isArray(mediaIds) ? mediaIds.length : 0;
+      let mediaHtml = mediaCnt > 0 ? `<span class="tag tag-blue">${mediaCnt} 个文件</span>` : '<span style="color:var(--muted)">无</span>';
       html += `<tr>
         <td>${v.id}</td>
         <td>${esc(v.headline || '-')}</td>
         <td>${platformLabel(v.platform)}</td>
         <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.caption || '-')}</td>
+        <td>${mediaHtml}</td>
         <td><span class="tag ${statusCls}">${esc(v.status || 'draft')}</span></td>
         <td><div class="td-actions">
           <button class="btn-xs btn-success" onclick="setVariantStatus(${v.id},'ready')">就绪</button>
@@ -2171,17 +2305,22 @@ async function createVariant() {
   const caption = document.getElementById('vc-caption').value.trim();
   const hashStr = document.getElementById('vc-hashtags').value.trim();
   const hashtags = hashStr ? hashStr.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const media_asset_ids = _vcUploadedAssets.map(a => a.id);
+  const cover_asset_id = _vcUploadedAssets.length > 0 ? _vcUploadedAssets[0].id : null;
 
   try {
     showLoading();
     await API.post('/api/contents/' + contentId + '/variants', {
       headline, platform, caption, hashtags,
-      cover_asset_id: null, media_asset_ids: []
+      cover_asset_id, media_asset_ids
     });
     toast('变体创建成功', 'success');
     document.getElementById('vc-headline').value = '';
     document.getElementById('vc-caption').value = '';
     document.getElementById('vc-hashtags').value = '';
+    _vcUploadedAssets = [];
+    document.getElementById('vc-media-preview').innerHTML = '';
+    document.getElementById('vc-file-input').value = '';
     loadVariants(contentId);
   } catch(e) { toast('创建变体失败: ' + e.message, 'error'); }
   finally { hideLoading(); }
@@ -2286,6 +2425,7 @@ function renderAcctListTab() {
         <option value="instagram">Instagram</option><option value="twitter">Twitter</option>
         <option value="facebook">Facebook</option><option value="weibo">微博</option>
         <option value="xiaohongshu">小红书</option>
+        <option value="bilibili">B站</option>
       </select>
       <select id="account-status-filter" onchange="loadAccounts()">
         <option value="">全部状态</option>
@@ -2416,7 +2556,8 @@ async function openAcctDetail(id) {
   try {
     showLoading();
     const acct = await API.get('/api/accounts/'+id+'?include=details');
-    const creds = await API.get('/api/accounts/'+id+'/credentials');
+    let cookieStatus = {has_cookies: false, cookie_count: 0, updated_at: null};
+    try { cookieStatus = await API.get('/api/accounts/'+id+'/cookies'); } catch(e) { /* ignore */ }
     const logs = await API.get('/api/accounts/'+id+'/login-logs?limit=20');
     const warming = await API.get('/api/accounts/'+id+'/warming');
     hideLoading();
@@ -2428,11 +2569,10 @@ async function openAcctDetail(id) {
         <div class="modal-body">
           <div class="ai-sub-tabs" style="margin-bottom:16px">
             <button class="ai-tab active" onclick="switchDetailTab(this,'dt-info')">基本信息</button>
-            <button class="ai-tab" onclick="switchDetailTab(this,'dt-creds')">凭证管理</button>
+            <button class="ai-tab" onclick="switchDetailTab(this,'dt-browser-login')">Cookie登录</button>
             <button class="ai-tab" onclick="switchDetailTab(this,'dt-logs')">登录日志</button>
             <button class="ai-tab" onclick="switchDetailTab(this,'dt-proxy')">代理配置</button>
             <button class="ai-tab" onclick="switchDetailTab(this,'dt-health')">健康状态</button>
-            <button class="ai-tab" onclick="switchDetailTab(this,'dt-browser-login')">浏览器登录</button>
           </div>
           <div id="dt-info">
             <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
@@ -2451,30 +2591,6 @@ async function openAcctDetail(id) {
               <tr><td style="color:var(--text-muted)">备注</td><td>${esc(acct.notes||'-')}</td></tr>
               <tr><td style="color:var(--text-muted)">创建时间</td><td>${acct.created_at||'-'}</td></tr>
             </tbody></table>
-          </div>
-          <div id="dt-creds" style="display:none">
-            <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-              <h4>凭证列表</h4>
-              <button class="btn-sm btn-primary" onclick="openAddCredModal(${acct.id})">+ 添加凭证</button>
-            </div>
-            ${creds.length === 0 ? '<p style="color:var(--text-muted)">暂无凭证</p>' : creds.map(c => `
-              <div class="card" style="padding:12px;margin-bottom:8px">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <div>
-                    <span class="tag tag-blue">${c.credential_type}</span>
-                    <span class="tag ${c.validation_status==='valid'?'tag-green':c.validation_status==='invalid'?'tag-red':'tag-gray'}">${c.validation_status}</span>
-                  </div>
-                  <div class="td-actions">
-                    <button class="btn-xs btn-success" onclick="validateCred(${c.id})">验证</button>
-                    <button class="btn-xs btn-danger" onclick="deleteCred(${c.id},${acct.id})">删除</button>
-                  </div>
-                </div>
-                <div style="margin-top:8px;font-size:13px;color:var(--text-muted)">
-                  ${c.credential_data_preview ? Object.entries(c.credential_data_preview).map(([k,v])=>`<div>${esc(k)}: ${esc(v)}</div>`).join('') : ''}
-                  <div>创建: ${c.created_at||'-'} | 过期: ${c.expires_at||'无'}</div>
-                </div>
-              </div>
-            `).join('')}
           </div>
           <div id="dt-logs" style="display:none">
             <h4 style="margin-bottom:12px">最近登录日志</h4>
@@ -2521,56 +2637,42 @@ async function openAcctDetail(id) {
           </div>
           <div id="dt-browser-login" style="display:none">
             <div style="margin-bottom:16px">
-              <h4 style="margin-bottom:12px">选择登录方式</h4>
-              <div style="display:flex;gap:12px;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--bg-input)">
-                  <input type="radio" name="login-method" value="cookie_import" checked> Cookie导入
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--bg-input)">
-                  <input type="radio" name="login-method" value="password_login"> 账号密码登录
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--bg-input)">
-                  <input type="radio" name="login-method" value="qr_login"> 扫码登录
-                </label>
+              <h4 style="margin-bottom:12px">Cookie 状态</h4>
+              <div class="card" style="padding:16px">
+                ${cookieStatus.has_cookies ? `
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                    <span class="tag tag-green">已保存</span>
+                    <span style="color:var(--text-secondary)">${cookieStatus.cookie_count} 个Cookie</span>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-muted)">更新时间: ${cookieStatus.updated_at || '-'}</div>
+                  <button class="btn-sm btn-danger" style="margin-top:12px" onclick="deleteSavedCookies(${acct.id})">删除Cookie</button>
+                ` : `
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span class="tag tag-gray">未保存</span>
+                    <span style="color:var(--text-muted)">请通过下方浏览器登录获取Cookie</span>
+                  </div>
+                `}
               </div>
             </div>
 
-            <div id="bl-cookie-section">
-              <label>粘贴Cookie (JSON数组 或 name=value; 格式)</label>
-              <textarea id="bl-cookie-input" rows="6" placeholder='[{"name":"sessionid","value":"abc123","domain":".example.com"}]&#10;或&#10;sessionid=abc123; token=xyz456'></textarea>
+            <h4 style="margin-bottom:12px">浏览器登录</h4>
+            <div style="padding:16px;background:var(--bg-input);border-radius:var(--radius);border:1px solid var(--border-color);margin-bottom:16px">
+              <p style="color:var(--text-secondary);margin-bottom:8px">点击「打开登录页面」后，系统将弹出浏览器窗口，请在浏览器中手动完成登录。</p>
+              <p style="color:var(--text-muted);font-size:13px">登录完成后，点击「登录完成，保存Cookie」，系统将自动提取并加密保存Cookie。</p>
             </div>
 
-            <div id="bl-password-section" style="display:none">
-              <div style="padding:16px;background:var(--bg-input);border-radius:var(--radius);border:1px solid var(--border-color)">
-                <p style="color:var(--text-secondary)">将使用该账号已存储的凭证（用户名+密码）进行自动登录。</p>
-                <p style="color:var(--text-muted);font-size:13px;margin-top:8px">请确保已在"凭证管理"中添加了 username_password 类型的凭证。</p>
-              </div>
-            </div>
-
-            <div id="bl-qr-section" style="display:none">
-              <div style="padding:16px;background:var(--bg-input);border-radius:var(--radius);border:1px solid var(--border-color)">
-                <p style="color:var(--text-secondary)">点击"开始登录"后，系统将打开平台登录页并显示二维码，请使用对应APP扫描。</p>
-              </div>
-            </div>
-
-            <div style="margin-top:16px;display:flex;gap:8px">
-              <button class="btn-primary" id="bl-start-btn" onclick="startBrowserLogin(${acct.id})">开始登录</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-primary" id="bl-start-btn" onclick="startBrowserLogin(${acct.id})">打开登录页面</button>
+              <button class="btn-success" id="bl-complete-btn" style="display:none" onclick="completeBrowserLogin(${acct.id})">登录完成，保存Cookie</button>
               <button class="btn-danger" id="bl-cancel-btn" style="display:none" onclick="cancelBrowserLogin(${acct.id})">取消</button>
             </div>
 
             <div id="bl-progress" style="display:none;margin-top:16px;padding:16px;background:var(--bg-input);border-radius:var(--radius);border:1px solid var(--border-color)">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <div style="display:flex;align-items:center;gap:8px">
                 <span style="font-weight:500">状态:</span>
                 <span id="bl-status" class="tag tag-blue">等待中</span>
               </div>
-              <p id="bl-message" style="color:var(--text-secondary);font-size:14px"></p>
-              <div id="bl-screenshot-area" style="display:none;margin-top:12px;text-align:center">
-                <img id="bl-screenshot" style="max-width:100%;max-height:400px;border-radius:var(--radius);border:1px solid var(--border-color)" />
-              </div>
-              <div style="margin-top:12px;display:flex;gap:8px">
-                <button class="btn-success btn-sm" id="bl-captcha-btn" style="display:none" onclick="signalCaptchaSolved(${acct.id})">验证码已处理</button>
-                <button class="btn-success btn-sm" id="bl-qr-btn" style="display:none" onclick="signalQrScanned(${acct.id})">已扫码确认</button>
-              </div>
+              <p id="bl-message" style="color:var(--text-secondary);font-size:14px;margin-top:8px"></p>
             </div>
           </div>
         </div>
@@ -2580,22 +2682,19 @@ async function openAcctDetail(id) {
   } catch(e) { hideLoading(); toast(e.message, 'error'); }
 }
 
-function closeAcctDetail() { stopBLPolling(); const m = document.getElementById('acct-detail-modal'); if(m) m.remove(); }
+function closeAcctDetail() { const m = document.getElementById('acct-detail-modal'); if(m) m.remove(); }
 function switchDetailTab(btn, tabId) {
   btn.closest('.ai-sub-tabs').querySelectorAll('.ai-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  ['dt-info','dt-creds','dt-logs','dt-proxy','dt-health','dt-browser-login'].forEach(id => {
+  ['dt-info','dt-logs','dt-proxy','dt-health','dt-browser-login'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = id === tabId ? 'block' : 'none';
   });
 }
 
-async function validateCred(credId) {
-  try { await API.post('/api/credentials/'+credId+'/validate'); toast('验证成功','success'); } catch(e) { toast(e.message,'error'); }
-}
-function deleteCred(credId, acctId) {
-  showConfirm('删除凭证', '确定要删除此凭证？删除后不可恢复。', async () => {
-    try { await API.del('/api/credentials/'+credId); toast('已删除','success'); closeAcctDetail(); openAcctDetail(acctId); } catch(e) { toast(e.message,'error'); }
+async function deleteSavedCookies(acctId) {
+  showConfirm('删除Cookie', '确定要删除此账号的Cookie？删除后需要重新登录。', async () => {
+    try { await API.del('/api/accounts/'+acctId+'/cookies'); toast('Cookie已删除','success'); closeAcctDetail(); openAcctDetail(acctId); } catch(e) { toast(e.message,'error'); }
   });
 }
 async function removeProxyAssign(acctId) {
@@ -2608,222 +2707,180 @@ async function advanceWarming(acctId) {
   try { const r = await API.post('/api/accounts/'+acctId+'/warming/advance'); toast('养号推进: '+(r.status||'阶段'+r.new_stage),'success'); closeAcctDetail(); openAcctDetail(acctId); } catch(e) { toast(e.message,'error'); }
 }
 
-/* ── Browser Login ── */
-let _blPollTimer = null;
-let _blCurrentAccountId = null;
-let _blPollErrorCount = 0;
-
-// Toggle login method sections
-document.addEventListener('change', function(e) {
-  if (e.target.name === 'login-method') {
-    const method = e.target.value;
-    const cookieSec = document.getElementById('bl-cookie-section');
-    const pwdSec = document.getElementById('bl-password-section');
-    const qrSec = document.getElementById('bl-qr-section');
-    if (cookieSec) cookieSec.style.display = method === 'cookie_import' ? 'block' : 'none';
-    if (pwdSec) pwdSec.style.display = method === 'password_login' ? 'block' : 'none';
-    if (qrSec) qrSec.style.display = method === 'qr_login' ? 'block' : 'none';
-  }
-});
-
+/* ── Browser Login (simplified) ── */
 async function startBrowserLogin(accountId) {
-  const methodEl = document.querySelector('input[name="login-method"]:checked');
-  if (!methodEl) { toast('请选择登录方式', 'warning'); return; }
-  const method = methodEl.value;
-  const body = { method };
-
-  if (method === 'cookie_import') {
-    const cookieText = document.getElementById('bl-cookie-input')?.value?.trim();
-    if (!cookieText) { toast('请粘贴Cookie', 'warning'); return; }
-    try {
-      const parsed = JSON.parse(cookieText);
-      body.cookie_data = { cookies: parsed };
-    } catch {
-      body.cookie_data = { cookies: cookieText };
-    }
-  }
-
   try {
     const startBtn = document.getElementById('bl-start-btn');
+    const completeBtn = document.getElementById('bl-complete-btn');
     const cancelBtn = document.getElementById('bl-cancel-btn');
-    if (startBtn) startBtn.disabled = true;
-    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
-
-    const result = await API.post('/api/accounts/' + accountId + '/browser-login', body);
-    toast('登录会话已启动', 'success');
-    _blCurrentAccountId = accountId;
-
     const progress = document.getElementById('bl-progress');
+
+    if (startBtn) startBtn.disabled = true;
+    if (completeBtn) completeBtn.style.display = 'inline-flex';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
     if (progress) progress.style.display = 'block';
 
-    startBLPolling(accountId);
+    updateBLUI('open', '正在打开浏览器...');
+
+    const result = await API.post('/api/accounts/' + accountId + '/browser-login/start');
+    toast('浏览器已打开，请手动登录', 'success');
+    updateBLUI('open', result.message || '浏览器已打开，请在浏览器窗口中完成登录');
   } catch (e) {
-    toast('启动失败: ' + e.message, 'error');
-    const startBtn = document.getElementById('bl-start-btn');
-    if (startBtn) startBtn.disabled = false;
-    const cancelBtn = document.getElementById('bl-cancel-btn');
-    if (cancelBtn) cancelBtn.style.display = 'none';
+    toast('打开失败: ' + e.message, 'error');
+    resetBLButtons();
   }
 }
 
-function startBLPolling(accountId) {
-  stopBLPolling();
-  _blPollErrorCount = 0;
-  updateBLUI('pending', '正在启动...');
-  _blPollTimer = setInterval(async () => {
-    try {
-      const s = await API.get('/api/accounts/' + accountId + '/browser-login/status');
-      _blPollErrorCount = 0; // reset on success
-
-      updateBLUI(s.status, s.progress_message);
-
-      if (s.status === 'need_captcha' || s.status === 'waiting_qr_scan') {
-        loadBLScreenshot(accountId, s.status === 'waiting_qr_scan' ? 'qr' : 'captcha');
-      }
-
-      if (['success', 'failed', 'cancelled', 'timeout'].includes(s.status)) {
-        stopBLPolling();
-        const startBtn = document.getElementById('bl-start-btn');
-        if (startBtn) startBtn.disabled = false;
-        const cancelBtn = document.getElementById('bl-cancel-btn');
-        if (cancelBtn) cancelBtn.style.display = 'none';
-
-        if (s.status === 'success') {
-          toast('登录成功！Cookie已自动保存', 'success');
-        } else if (s.status === 'failed') {
-          toast('登录失败: ' + (s.progress_message || s.error_message || ''), 'error');
-          if (s.screenshot_path) loadBLScreenshot(accountId, 'latest');
-        }
-      }
-    } catch (e) {
-      // 404 means no session
-      if (e.message && e.message.includes('404')) { stopBLPolling(); return; }
-      _blPollErrorCount++;
-      if (_blPollErrorCount >= 3) {
-        stopBLPolling();
-        updateBLUI('failed', '网络错误，轮询已停止 (连续' + _blPollErrorCount + '次失败)');
-        toast('状态轮询因网络错误已停止，请检查网络后重试', 'error');
-        const startBtn = document.getElementById('bl-start-btn');
-        if (startBtn) startBtn.disabled = false;
-        const cancelBtn = document.getElementById('bl-cancel-btn');
-        if (cancelBtn) cancelBtn.style.display = 'none';
-      }
+async function completeBrowserLogin(accountId) {
+  try {
+    updateBLUI('saving', '正在提取Cookie...');
+    const result = await API.post('/api/accounts/' + accountId + '/browser-login/complete');
+    if (result.success) {
+      toast(result.message, 'success');
+      updateBLUI('success', result.message);
+      resetBLButtons();
+      // Refresh modal to show updated cookie status
+      closeAcctDetail();
+      openAcctDetail(accountId);
+    } else {
+      toast(result.message, 'warning');
+      updateBLUI('open', result.message);
     }
-  }, 2000);
-}
-
-function stopBLPolling() {
-  if (_blPollTimer) { clearInterval(_blPollTimer); _blPollTimer = null; }
-}
-
-function updateBLUI(status, message) {
-  const statusEl = document.getElementById('bl-status');
-  const msgEl = document.getElementById('bl-message');
-
-  const STATUS_MAP = {
-    pending: { label: '等待中', cls: 'tag-gray' },
-    launching: { label: '启动浏览器', cls: 'tag-blue' },
-    navigating: { label: '加载页面', cls: 'tag-blue' },
-    waiting_input: { label: '输入中', cls: 'tag-indigo' },
-    waiting_qr_scan: { label: '等待扫码', cls: 'tag-purple' },
-    need_captcha: { label: '需要验证码', cls: 'tag-yellow' },
-    verifying: { label: '验证中', cls: 'tag-indigo' },
-    extracting_cookies: { label: '提取Cookie', cls: 'tag-cyan' },
-    success: { label: '登录成功', cls: 'tag-green' },
-    failed: { label: '登录失败', cls: 'tag-red' },
-    cancelled: { label: '已取消', cls: 'tag-gray' },
-    timeout: { label: '超时', cls: 'tag-red' },
-  };
-  const info = STATUS_MAP[status] || { label: status, cls: 'tag-gray' };
-  if (statusEl) { statusEl.textContent = info.label; statusEl.className = 'tag ' + info.cls; }
-  if (msgEl) msgEl.textContent = message || '';
-
-  const captchaBtn = document.getElementById('bl-captcha-btn');
-  const qrBtn = document.getElementById('bl-qr-btn');
-  if (captchaBtn) captchaBtn.style.display = status === 'need_captcha' ? 'inline-flex' : 'none';
-  if (qrBtn) qrBtn.style.display = status === 'waiting_qr_scan' ? 'inline-flex' : 'none';
-}
-
-async function loadBLScreenshot(accountId, type) {
-  try {
-    const data = await API.get('/api/accounts/' + accountId + '/browser-login/screenshot?type=' + type);
-    const imgEl = document.getElementById('bl-screenshot');
-    const area = document.getElementById('bl-screenshot-area');
-    if (imgEl && data.image) {
-      imgEl.src = 'data:image/png;base64,' + data.image;
-      if (area) area.style.display = 'block';
-    }
-  } catch (e) { /* ignore */ }
-}
-
-async function signalCaptchaSolved(accountId) {
-  try {
-    await API.post('/api/accounts/' + accountId + '/browser-login/captcha-solved');
-    toast('已通知系统', 'info');
-  } catch (e) { toast(e.message, 'error'); }
-}
-
-async function signalQrScanned(accountId) {
-  try {
-    await API.post('/api/accounts/' + accountId + '/browser-login/qr-scanned');
-    toast('已通知系统', 'info');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) {
+    toast('保存失败: ' + e.message, 'error');
+    updateBLUI('failed', e.message);
+  }
 }
 
 async function cancelBrowserLogin(accountId) {
   try {
     await API.post('/api/accounts/' + accountId + '/browser-login/cancel');
-    toast('已取消', 'info');
-    stopBLPolling();
-    const startBtn = document.getElementById('bl-start-btn');
-    if (startBtn) startBtn.disabled = false;
-    const cancelBtn = document.getElementById('bl-cancel-btn');
-    if (cancelBtn) cancelBtn.style.display = 'none';
+    toast('已关闭浏览器', 'info');
+    updateBLUI('cancelled', '已取消');
+    resetBLButtons();
   } catch (e) { toast(e.message, 'error'); }
 }
 
-async function quickBrowserLogin(accountId) {
-  await openAcctDetail(accountId);
-  // Modal is now rendered, switch to browser login tab
-  const tabs = document.querySelectorAll('#acct-detail-modal .ai-tab');
-  const lastTab = tabs[tabs.length - 1];
-  if (lastTab) lastTab.click();
+function updateBLUI(status, message) {
+  const statusEl = document.getElementById('bl-status');
+  const msgEl = document.getElementById('bl-message');
+  const STATUS_MAP = {
+    open: { label: '浏览器已打开', cls: 'tag-blue' },
+    saving: { label: '保存中', cls: 'tag-indigo' },
+    success: { label: '登录成功', cls: 'tag-green' },
+    failed: { label: '失败', cls: 'tag-red' },
+    cancelled: { label: '已取消', cls: 'tag-gray' },
+  };
+  const info = STATUS_MAP[status] || { label: status, cls: 'tag-gray' };
+  if (statusEl) { statusEl.textContent = info.label; statusEl.className = 'tag ' + info.cls; }
+  if (msgEl) msgEl.textContent = message || '';
 }
 
-function openAddCredModal(acctId) {
-  let html = `<div class="modal-overlay show" id="cred-add-modal" onclick="if(event.target===this)document.getElementById('cred-add-modal').remove()">
+function resetBLButtons() {
+  const startBtn = document.getElementById('bl-start-btn');
+  const completeBtn = document.getElementById('bl-complete-btn');
+  const cancelBtn = document.getElementById('bl-cancel-btn');
+  if (startBtn) startBtn.disabled = false;
+  if (completeBtn) completeBtn.style.display = 'none';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
+async function quickBrowserLogin(accountId) {
+  // Show inline login modal instead of navigating to detail tab
+  const existingModal = document.getElementById('quick-login-modal');
+  if (existingModal) existingModal.remove();
+
+  const html = `<div class="modal-overlay show" id="quick-login-modal" onclick="if(event.target===this){cancelQuickLogin(${accountId})}">
     <div class="modal" style="max-width:500px">
-      <div class="modal-header"><h3>添加凭证</h3><button class="modal-close" onclick="document.getElementById('cred-add-modal').remove()">&times;</button></div>
-      <div class="modal-body">
-        <label>凭证类型 *</label>
-        <select id="cred-type"><option value="cookie">Cookie</option><option value="oauth_token">OAuth Token</option><option value="username_password">用户名密码</option><option value="session">Session</option><option value="api_key">API Key</option></select>
-        <label style="margin-top:12px">凭证数据 (JSON) *</label>
-        <textarea id="cred-data" rows="6" placeholder='{"cookies":"...","user_agent":"..."}'></textarea>
-        <label style="margin-top:12px">过期时间 (可选)</label>
-        <input type="datetime-local" id="cred-expires">
-        <label style="margin-top:12px">备注</label>
-        <input type="text" id="cred-notes" placeholder="备注">
+      <div class="modal-header"><h3>🔐 浏览器登录</h3><button class="modal-close" onclick="cancelQuickLogin(${accountId})">&times;</button></div>
+      <div class="modal-body" style="text-align:center">
+        <div id="ql-step" style="margin-bottom:16px">
+          <div style="font-size:48px;margin-bottom:12px">⏳</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:8px" id="ql-title">正在打开浏览器...</div>
+          <div style="color:var(--text-secondary);font-size:13px" id="ql-desc">请稍候</div>
+        </div>
       </div>
-      <div class="modal-footer"><button class="btn-primary" onclick="submitCred(${acctId})">保存</button></div>
+      <div class="modal-footer" id="ql-footer" style="justify-content:center">
+      </div>
     </div>
   </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
+
+  try {
+    const result = await API.post('/api/accounts/' + accountId + '/browser-login/start');
+    // Update to "waiting for login" state
+    document.getElementById('ql-step').innerHTML = `
+      <div style="font-size:48px;margin-bottom:12px">🌐</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px" id="ql-title">浏览器已打开</div>
+      <div style="color:var(--text-secondary);font-size:13px;line-height:1.8" id="ql-desc">
+        <b>步骤1:</b> 在弹出的浏览器窗口中完成登录<br>
+        <b>步骤2:</b> 登录成功后，点击下方「✅ 我已登录完成」按钮
+      </div>
+    `;
+    document.getElementById('ql-footer').innerHTML = `
+      <button class="btn-primary" style="font-size:14px;padding:10px 24px" onclick="finishQuickLogin(${accountId})">✅ 我已登录完成</button>
+      <button class="btn-secondary" style="font-size:14px;padding:10px 24px" onclick="cancelQuickLogin(${accountId})">取消</button>
+    `;
+  } catch (e) {
+    document.getElementById('ql-step').innerHTML = `
+      <div style="font-size:48px;margin-bottom:12px">❌</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#f87171">打开失败</div>
+      <div style="color:var(--text-secondary);font-size:13px">${e.message}</div>
+    `;
+    document.getElementById('ql-footer').innerHTML = `
+      <button class="btn-secondary" onclick="document.getElementById('quick-login-modal').remove()">关闭</button>
+    `;
+  }
 }
 
-async function submitCred(acctId) {
+async function finishQuickLogin(accountId) {
+  const titleEl = document.getElementById('ql-title');
+  const descEl = document.getElementById('ql-desc');
+  const footerEl = document.getElementById('ql-footer');
+  if (titleEl) titleEl.textContent = '正在提取Cookie...';
+  if (descEl) descEl.textContent = '请稍候，正在从浏览器保存登录信息';
+  if (footerEl) footerEl.innerHTML = '';
+
   try {
-    const type = document.getElementById('cred-type').value;
-    const dataStr = document.getElementById('cred-data').value.trim();
-    const expires = document.getElementById('cred-expires').value || null;
-    const notes = document.getElementById('cred-notes').value.trim();
-    if (!dataStr) { toast('请输入凭证数据', 'warning'); return; }
-    const credData = JSON.parse(dataStr);
-    showLoading();
-    await API.post('/api/accounts/'+acctId+'/credentials', { credential_type: type, credential_data: credData, expires_at: expires, notes });
-    toast('凭证已添加','success');
-    document.getElementById('cred-add-modal').remove();
-    closeAcctDetail(); openAcctDetail(acctId);
-  } catch(e) { toast('失败: '+e.message,'error'); } finally { hideLoading(); }
+    const result = await API.post('/api/accounts/' + accountId + '/browser-login/complete');
+    if (result.success) {
+      document.getElementById('ql-step').innerHTML = `
+        <div style="font-size:48px;margin-bottom:12px">✅</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#4ade80">${result.message}</div>
+      `;
+      footerEl.innerHTML = `<button class="btn-primary" onclick="document.getElementById('quick-login-modal').remove();renderAcctTab()">完成</button>`;
+      toast(result.message, 'success');
+    } else {
+      document.getElementById('ql-step').innerHTML = `
+        <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#fbbf24">${result.message}</div>
+        <div style="color:var(--text-secondary);font-size:13px">请确保已在浏览器中完成登录，然后重试</div>
+      `;
+      footerEl.innerHTML = `
+        <button class="btn-primary" onclick="finishQuickLogin(${accountId})">重试</button>
+        <button class="btn-secondary" onclick="cancelQuickLogin(${accountId})">取消</button>
+      `;
+    }
+  } catch (e) {
+    toast('保存失败: ' + e.message, 'error');
+    document.getElementById('ql-step').innerHTML = `
+      <div style="font-size:48px;margin-bottom:12px">❌</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#f87171">保存失败</div>
+      <div style="color:var(--text-secondary);font-size:13px">${e.message}</div>
+    `;
+    footerEl.innerHTML = `
+      <button class="btn-primary" onclick="finishQuickLogin(${accountId})">重试</button>
+      <button class="btn-secondary" onclick="cancelQuickLogin(${accountId})">取消</button>
+    `;
+  }
+}
+
+async function cancelQuickLogin(accountId) {
+  try {
+    await API.post('/api/accounts/' + accountId + '/browser-login/cancel');
+  } catch(e) { toast('取消快捷登录失败: ' + e.message, 'error'); }
+  const modal = document.getElementById('quick-login-modal');
+  if (modal) modal.remove();
 }
 
 function openAssignProxyModal(acctId) {
@@ -3348,9 +3405,9 @@ async function viewJobDetail(id) {
     showLoading();
     const job = await API.get('/api/jobs/' + id);
     let logs = [];
-    try { const ld = await API.get('/api/jobs/' + id + '/logs'); logs = Array.isArray(ld) ? ld : (ld.logs || []); } catch {}
+    try { const ld = await API.get('/api/jobs/' + id + '/logs'); logs = Array.isArray(ld) ? ld : (ld.logs || []); } catch(e) { toast('加载任务日志失败: ' + e.message, 'error'); }
     let metrics = null;
-    try { const md = await API.get('/api/jobs/' + id + '/metrics'); metrics = Array.isArray(md) ? (md.length > 0 ? md[md.length-1] : null) : md; } catch {}
+    try { const md = await API.get('/api/jobs/' + id + '/metrics'); metrics = Array.isArray(md) ? (md.length > 0 ? md[md.length-1] : null) : md; } catch(e) { toast('加载任务指标失败: ' + e.message, 'error'); }
     if (job.latest_metric) metrics = metrics || job.latest_metric;
 
     let html = '<div class="detail-grid">';
@@ -3389,6 +3446,24 @@ async function viewJobDetail(id) {
           <div class="tl-step">${esc(l.step || '-')}</div>
           <div class="tl-msg">${esc(l.message || '')}</div>
         </div>`;
+        // Show step screenshots if available
+        const raw = l.raw || {};
+        const steps = raw.steps || [];
+        if (steps.length > 0) {
+          html += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 16px 20px">';
+          steps.forEach(s => {
+            const ssFile = (s.screenshot || '').split(/[/\\]/).pop();
+            if (ssFile) {
+              html += `<div style="text-align:center;max-width:240px">
+                <img src="/api/screenshots/${esc(ssFile)}?token=${encodeURIComponent(state.token)}" alt="${esc(s.message || s.step)}"
+                  style="width:100%;border-radius:6px;border:1px solid var(--border);cursor:pointer"
+                  onclick="window.open(this.src,'_blank')" onerror="this.style.display='none'">
+                <div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(s.message || s.step)}</div>
+              </div>`;
+            }
+          });
+          html += '</div>';
+        }
       });
       html += '</div>';
     }
@@ -3424,7 +3499,7 @@ async function openBatchJobModal() {
     const contents = Array.isArray(cdata) ? cdata : (cdata.contents || cdata.items || []);
     const sel = document.getElementById('jb-content');
     sel.innerHTML = '<option value="">请选择内容</option>' + contents.map(c => `<option value="${c.id}">${esc(c.title)} (#${c.id})</option>`).join('');
-  } catch {}
+  } catch(e) { toast('加载内容列表失败: ' + e.message, 'error'); }
   // Load accounts
   try {
     const adata = await API.get('/api/accounts?status=active');
@@ -3433,7 +3508,7 @@ async function openBatchJobModal() {
     list.innerHTML = accounts.length > 0
       ? accounts.map(a => `<label class="checkbox-item"><input type="checkbox" value="${a.id}"> ${platformLabel(a.platform)} ${esc(a.handle)} (${esc(a.display_name || '')})</label>`).join('')
       : '<div style="padding:12px;color:var(--text-muted);text-align:center">暂无活跃账号</div>';
-  } catch {}
+  } catch(e) { toast('加载账号列表失败: ' + e.message, 'error'); }
   document.getElementById('jb-variant').innerHTML = '<option value="">不指定变体</option>';
   document.getElementById('jb-scheduled').value = '';
 }
@@ -3445,7 +3520,7 @@ document.addEventListener('change', async (e) => {
       const data = await API.get('/api/contents/' + e.target.value + '/variants');
       const variants = Array.isArray(data) ? data : (data.variants || []);
       document.getElementById('jb-variant').innerHTML = '<option value="">不指定变体</option>' + variants.map(v => `<option value="${v.id}">${esc(v.headline || '变体#' + v.id)} (${v.platform})</option>`).join('');
-    } catch {}
+    } catch(e) { toast('加载变体列表失败: ' + e.message, 'error'); }
   }
 });
 
@@ -3479,6 +3554,88 @@ async function createBatchJobs() {
     closeModal('job-batch-modal');
     loadJobs();
   } catch(e) { toast('批量创建失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+/* ========================================================
+   PUBLISH PAGE
+   ======================================================== */
+async function loadPublishPage() {
+  // Load approved contents
+  try {
+    const cdata = await API.get('/api/contents?status=approved');
+    const contents = Array.isArray(cdata) ? cdata : (cdata.contents || cdata.items || []);
+    const sel = document.getElementById('pub-content');
+    sel.innerHTML = '<option value="">请选择要发布的内容</option>' + contents.map(c =>
+      `<option value="${c.id}">${esc(c.title)} (#${c.id}) — ${c.content_type || ''}</option>`
+    ).join('');
+  } catch(e) { toast('加载发布内容列表失败: ' + e.message, 'error'); }
+  // Load active accounts
+  try {
+    const adata = await API.get('/api/accounts?status=active');
+    const accounts = Array.isArray(adata) ? adata : (adata.accounts || adata.items || []);
+    const list = document.getElementById('pub-accounts-list');
+    list.innerHTML = accounts.length > 0
+      ? accounts.map(a => `<label class="checkbox-item"><input type="checkbox" value="${a.id}"> ${platformLabel(a.platform)} ${esc(a.handle)} (${esc(a.display_name || '')})</label>`).join('')
+      : '<div style="padding:12px;color:var(--text-muted);text-align:center">暂无活跃账号</div>';
+  } catch(e) { toast('加载活跃账号失败: ' + e.message, 'error'); }
+  document.getElementById('pub-variant').innerHTML = '<option value="">不指定变体（使用原始内容）</option>';
+  document.getElementById('pub-scheduled').value = '';
+  document.getElementById('pub-content-preview').style.display = 'none';
+}
+
+async function onPubContentChange() {
+  const contentId = document.getElementById('pub-content').value;
+  const previewEl = document.getElementById('pub-content-preview');
+  if (!contentId) { previewEl.style.display = 'none'; return; }
+
+  // Load variants
+  try {
+    const data = await API.get('/api/contents/' + contentId + '/variants');
+    const variants = Array.isArray(data) ? data : (data.variants || []);
+    document.getElementById('pub-variant').innerHTML = '<option value="">不指定变体（使用原始内容）</option>' +
+      variants.map(v => `<option value="${v.id}">${esc(v.headline || '变体#' + v.id)} (${v.platform})</option>`).join('');
+  } catch(e) { toast('加载发布变体失败: ' + e.message, 'error'); }
+
+  // Show content preview
+  try {
+    const c = await API.get('/api/contents/' + contentId);
+    previewEl.innerHTML = `
+      <div style="font-weight:600;margin-bottom:6px">${esc(c.title)}</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">类型: ${c.content_type || '-'} | 主题: ${esc(c.topic || '-')} | 标签: ${esc((c.tags || []).join(', ') || '-')}</div>
+      <div style="font-size:13px;color:var(--text-secondary);white-space:pre-wrap;max-height:120px;overflow-y:auto">${esc((c.body || '').substring(0, 300))}${(c.body || '').length > 300 ? '...' : ''}</div>
+    `;
+    previewEl.style.display = 'block';
+  } catch { previewEl.style.display = 'none'; }
+}
+
+function pubSelectAll() {
+  document.querySelectorAll('#pub-accounts-list input[type="checkbox"]').forEach(cb => cb.checked = true);
+}
+function pubDeselectAll() {
+  document.querySelectorAll('#pub-accounts-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+}
+
+async function submitPublish() {
+  const content_id = parseInt(document.getElementById('pub-content').value);
+  if (!content_id) { toast('请选择要发布的内容', 'warning'); return; }
+  const checkboxes = document.querySelectorAll('#pub-accounts-list input[type="checkbox"]:checked');
+  const account_ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+  if (account_ids.length === 0) { toast('请至少选择一个目标账号', 'warning'); return; }
+  const variant_id = parseInt(document.getElementById('pub-variant').value) || null;
+  const scheduled_at = document.getElementById('pub-scheduled').value || null;
+
+  try {
+    showLoading();
+    await API.post('/api/jobs/batch', { content_id, account_ids, variant_id, scheduled_at });
+    toast(`已创建 ${account_ids.length} 个发布任务`, 'success');
+    // Reset form
+    document.getElementById('pub-content').value = '';
+    document.getElementById('pub-content-preview').style.display = 'none';
+    document.getElementById('pub-variant').innerHTML = '<option value="">不指定变体（使用原始内容）</option>';
+    document.getElementById('pub-scheduled').value = '';
+    pubDeselectAll();
+  } catch(e) { toast('发布失败: ' + e.message, 'error'); }
   finally { hideLoading(); }
 }
 
@@ -3540,7 +3697,7 @@ async function loadAiDashboard() {
     } else {
       let html = '<table><thead><tr><th>ID</th><th>主题</th><th>平台</th><th>状态</th><th>Token</th><th>时间</th></tr></thead><tbody>';
       tasks.forEach(t => {
-        let inp = {}; try { inp = typeof t.input_data === 'string' ? JSON.parse(t.input_data || '{}') : (t.input_data || {}); } catch { }
+        let inp = {}; try { inp = typeof t.input_data === 'string' ? JSON.parse(t.input_data || '{}') : (t.input_data || {}); } catch(e) { toast('解析任务数据失败: ' + e.message, 'error'); }
         const stCls = t.status === 'completed' ? 'tag-green' : t.status === 'failed' ? 'tag-red' : t.status === 'processing' ? 'tag-blue' : 'tag-gray';
         html += `<tr>
           <td>${t.id || '-'}</td>
@@ -3724,7 +3881,7 @@ async function loadAiGenerate() {
     const cfgs = await API.get('/api/ai/configs');
     const configs = Array.isArray(cfgs) ? cfgs : (cfgs.configs || cfgs.items || []);
     configs.forEach(c => { if (c.enabled !== false) configOptions += `<option value="${esc(c.config_key)}">${esc(c.config_key)} (${esc(c.provider)}/${esc(c.model)})</option>`; });
-  } catch {}
+  } catch(e) { toast('加载AI配置失败: ' + e.message, 'error'); }
 
   container.innerHTML = `
     <div class="ai-generate-grid">
@@ -3957,7 +4114,7 @@ async function openPipelineModal(editData) {
     const configs = Array.isArray(cfgs) ? cfgs : (cfgs.configs || cfgs.items || []);
     document.getElementById('plm-config').innerHTML = '<option value="">默认配置</option>' + configs.filter(c => c.enabled !== false).map(c => `<option value="${c.id}">${esc(c.config_key)}</option>`).join('');
     if (isEdit && editData.ai_config_id) document.getElementById('plm-config').value = editData.ai_config_id;
-  } catch {}
+  } catch(e) { toast('加载流水线AI配置失败: ' + e.message, 'error'); }
   openModal('pipeline-modal');
 }
 
@@ -3981,7 +4138,7 @@ async function submitPipeline() {
     name,
     description: document.getElementById('plm-desc').value.trim() || undefined,
     mode: document.getElementById('plm-mode').value,
-    auto_review: document.getElementById('plm-auto-review').value === 'true',
+    auto_approve: document.getElementById('plm-auto-review').value === 'true',
     target_platforms,
     daily_limit: parseInt(document.getElementById('plm-daily-limit').value) || 10,
     daily_token_budget: parseInt(document.getElementById('plm-token-budget').value) || 100000,
@@ -4034,7 +4191,7 @@ function deletePipeline(id) {
 /* --- AI Logs --- */
 async function loadAiLogs() {
   const container = document.getElementById('ai-tab-content');
-  container.innerHTML = '<div id="ai-log-stats-bar" class="ai-log-stats"></div><div class="card"><div class="table-wrapper"><table><thead><tr><th>时间</th><th>类型</th><th>模型</th><th>Token</th><th>耗时(ms)</th><th>状态</th></tr></thead><tbody id="ai-logs-tbody"></tbody></table></div></div>';
+  container.innerHTML = '<div id="ai-log-stats-bar" class="ai-log-stats"></div><div class="card"><div class="table-wrapper"><table><thead><tr><th>时间</th><th>任务ID</th><th>Token (入/出/总)</th><th>费用(USD)</th><th>耗时(ms)</th><th>状态</th></tr></thead><tbody id="ai-logs-tbody"></tbody></table></div></div>';
   try {
     const [statsData, logsData] = await Promise.all([
       API.get('/api/ai/logs/stats').catch(() => ({})),
@@ -4054,13 +4211,15 @@ async function loadAiLogs() {
       return;
     }
     tbody.innerHTML = logs.map(l => {
+      const safetyOk = !l.content_safety_flag;
+      const statusTag = safetyOk ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">安全标记</span>';
       return `<tr>
         <td style="white-space:nowrap">${formatTime(l.created_at || l.timestamp)}</td>
-        <td>generation</td>
-        <td>-</td>
-        <td>${l.total_tokens || '-'}</td>
-        <td>${l.latency_ms || '-'}</td>
-        <td><span class="tag tag-green">-</span></td>
+        <td>${l.generation_task_id || '-'}</td>
+        <td>${(l.input_tokens || 0)} / ${(l.output_tokens || 0)} / ${(l.total_tokens || 0)}</td>
+        <td>$${(l.estimated_cost_usd || 0).toFixed(4)}</td>
+        <td>${l.latency_ms != null ? l.latency_ms : '-'}</td>
+        <td>${statusTag}</td>
       </tr>`;
     }).join('');
   } catch(e) { toast('加载日志失败: ' + e.message, 'error'); }

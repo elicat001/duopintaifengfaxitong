@@ -1,10 +1,14 @@
 """Blueprint for Proxy Pool and Assignment REST APIs."""
 
+import logging
+
 from flask import Blueprint, request, jsonify
 from config import DB_PATH, CREDENTIAL_ENCRYPTION_KEY
 from services.crypto_service import CryptoService
 from services.proxy_service import ProxyGroupService, ProxyService
 from api.auth import require_auth
+
+logger = logging.getLogger(__name__)
 
 proxies_bp = Blueprint("proxies", __name__)
 crypto = CryptoService(CREDENTIAL_ENCRYPTION_KEY)
@@ -28,7 +32,8 @@ def create_proxy_group():
         gid = group_svc.create(data)
         return jsonify(group_svc.get(gid)), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxy-groups", methods=["GET"])
@@ -38,7 +43,8 @@ def list_proxy_groups():
         items = group_svc.list_all()
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxy-groups/<int:gid>", methods=["PUT"])
@@ -53,7 +59,8 @@ def update_proxy_group(gid):
         group_svc.update(gid, data)
         return jsonify(group_svc.get(gid)), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxy-groups/<int:gid>", methods=["DELETE"])
@@ -64,7 +71,8 @@ def delete_proxy_group(gid):
             return jsonify({"error": "proxy group not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── Proxy API ────────────────────────────────────────────────────────────
@@ -85,7 +93,8 @@ def create_proxy():
         pid = proxy_svc.create(data)
         return jsonify(proxy_svc.get(pid)), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies", methods=["GET"])
@@ -104,7 +113,8 @@ def list_proxies():
         )
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/<int:pid>", methods=["GET"])
@@ -116,7 +126,8 @@ def get_proxy(pid):
             return jsonify({"error": "proxy not found"}), 404
         return jsonify(p), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/<int:pid>", methods=["PUT"])
@@ -131,7 +142,8 @@ def update_proxy(pid):
         proxy_svc.update(pid, data)
         return jsonify(proxy_svc.get(pid)), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/<int:pid>", methods=["DELETE"])
@@ -142,7 +154,8 @@ def delete_proxy(pid):
             return jsonify({"error": "proxy not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/<int:pid>/check", methods=["POST"])
@@ -154,7 +167,8 @@ def check_proxy(pid):
             return jsonify(result), 404
         return jsonify(result), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/check-all", methods=["POST"])
@@ -164,7 +178,8 @@ def check_all_proxies():
         results = proxy_svc.check_all_health()
         return jsonify({"results": results, "total": len(results)}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/<int:pid>/logs", methods=["GET"])
@@ -175,7 +190,8 @@ def get_proxy_logs(pid):
         logs = proxy_svc.get_check_logs(pid, limit=limit)
         return jsonify(logs), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/stats", methods=["GET"])
@@ -185,7 +201,8 @@ def get_proxy_stats():
         stats = proxy_svc.get_stats()
         return jsonify(stats), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/proxies/import", methods=["POST"])
@@ -198,7 +215,8 @@ def import_proxies():
         result = proxy_svc.import_bulk(data["proxies"])
         return jsonify(result), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── Account Proxy Assignment API ──────────────────────────────────────
@@ -225,7 +243,8 @@ def assign_proxy(account_id):
         assignment = proxy_svc.get_assignment(account_id)
         return jsonify(assignment), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/accounts/<int:account_id>/proxy-assignment", methods=["GET"])
@@ -237,7 +256,8 @@ def get_proxy_assignment(account_id):
             return jsonify({"error": "no active proxy assignment"}), 404
         return jsonify(assignment), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @proxies_bp.route("/api/accounts/<int:account_id>/proxy-assignment", methods=["DELETE"])
@@ -249,4 +269,5 @@ def remove_proxy_assignment(account_id):
             return jsonify({"error": "no active assignment found"}), 404
         return jsonify({"message": "proxy assignment removed"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in proxies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500

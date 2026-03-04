@@ -1,12 +1,15 @@
 """Service for Proxy Pool management: groups, proxies, assignments, health checks."""
 
 import json
+import logging
 import random
 import time
 from datetime import datetime
 from typing import Optional, List
 
 from models.database import get_connection
+
+logger = logging.getLogger(__name__)
 
 
 def _row_to_dict(row) -> dict:
@@ -249,7 +252,8 @@ class ProxyService:
                     try:
                         pwd = self.crypto.decrypt(proxy["password_encrypted"])
                     except Exception:
-                        pwd = proxy["password_encrypted"]  # Fall back to raw value (may be plaintext)
+                        pwd = ""
+                        logger.warning("Failed to decrypt proxy password for proxy %d", proxy_id)
                 auth = f"{proxy['username']}:{pwd}@" if pwd else f"{proxy['username']}@"
             proxy_url = f"{proxy['proxy_type']}://{auth}{proxy['host']}:{proxy['port']}"
 
@@ -263,8 +267,7 @@ class ProxyService:
 
             try:
                 import httpx
-                proxies_dict = {"all://": proxy_url}
-                with httpx.Client(proxies=proxies_dict, timeout=10) as client:
+                with httpx.Client(proxy=proxy_url, timeout=10) as client:
                     resp = client.get(check_url)
                     latency = int((time.time() - start) * 1000)
                     if resp.status_code == 200:

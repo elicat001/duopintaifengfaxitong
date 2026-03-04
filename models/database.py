@@ -590,5 +590,15 @@ def init_database(db_path: str) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_login_logs_account_created ON login_logs(account_id, created_at)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_credentials_account_active ON account_credentials(account_id, is_active)")
 
+    # Job executor: find queued jobs and rate-limit checks
+    c.execute("CREATE INDEX IF NOT EXISTS idx_jobs_state_updated ON jobs(state, updated_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_jobs_account_state ON jobs(account_id, state)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_jobs_content ON jobs(content_id)")
+    # Content/variant lookups
+    c.execute("CREATE INDEX IF NOT EXISTS idx_contents_type ON contents(content_type)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_variants_platform ON variants(platform)")
+    # Proxy assignments
+    c.execute("CREATE INDEX IF NOT EXISTS idx_proxy_assign_active ON account_proxy_assignments(is_active)")
+
     conn.commit()
     conn.close()

@@ -2,10 +2,14 @@
 Blueprint for Policy REST APIs.
 """
 
+import logging
+
 from flask import Blueprint, request, jsonify
 from config import DB_PATH
 from services.policy_service import PolicyService
 from api.auth import require_auth
+
+logger = logging.getLogger(__name__)
 
 policies_bp = Blueprint("policies", __name__)
 policy_svc = PolicyService(DB_PATH)
@@ -27,7 +31,8 @@ def create_policy():
         policy = policy_svc.get(policy_id)
         return jsonify(policy), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in policies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @policies_bp.route("/api/policies", methods=["GET"])
@@ -44,7 +49,8 @@ def list_policies():
         )
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in policies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @policies_bp.route("/api/policies/<int:policy_id>", methods=["GET"])
@@ -57,7 +63,8 @@ def get_policy(policy_id):
             return jsonify({"error": "policy not found"}), 404
         return jsonify(policy), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in policies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @policies_bp.route("/api/policies/<int:policy_id>", methods=["PUT"])
@@ -77,7 +84,8 @@ def update_policy(policy_id):
         updated = policy_svc.get(policy_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in policies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @policies_bp.route("/api/policies/<int:policy_id>/toggle", methods=["POST"])
@@ -96,7 +104,8 @@ def toggle_policy(policy_id):
         updated = policy_svc.get(policy_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in policies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @policies_bp.route("/api/policies/<int:policy_id>", methods=["DELETE"])
@@ -109,4 +118,5 @@ def delete_policy(policy_id):
             return jsonify({"error": "policy not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in policies API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500

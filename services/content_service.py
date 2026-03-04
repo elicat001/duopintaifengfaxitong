@@ -204,9 +204,56 @@ class ContentService:
     # -- delete ----------------------------------------------------------------
 
     def delete(self, content_id: int) -> bool:
-        """Delete a content row. Returns True if deleted."""
+        """Delete a content row and all related records (cascade).
+        Deletes: variants, jobs (and their job_logs/metrics),
+        schedule_plans, performance_records, topic_suggestions,
+        generation_tasks (and their generation_logs).
+        Returns True if deleted."""
         conn = get_connection(self.db_path)
         try:
+            # Check existence first
+            row = conn.execute(
+                "SELECT id FROM contents WHERE id = ?", (content_id,)
+            ).fetchone()
+            if row is None:
+                return False
+
+            # Delete job_logs and metrics for jobs referencing this content
+            job_ids = conn.execute(
+                "SELECT id FROM jobs WHERE content_id = ?", (content_id,)
+            ).fetchall()
+            for job_row in job_ids:
+                jid = job_row["id"]
+                conn.execute("DELETE FROM job_logs WHERE job_id = ?", (jid,))
+                conn.execute("DELETE FROM metrics WHERE job_id = ?", (jid,))
+
+            # Delete jobs referencing this content
+            conn.execute("DELETE FROM jobs WHERE content_id = ?", (content_id,))
+
+            # Delete variants for this content
+            conn.execute("DELETE FROM variants WHERE content_id = ?", (content_id,))
+
+            # Delete schedule_plans for this content
+            conn.execute("DELETE FROM schedule_plans WHERE content_id = ?", (content_id,))
+
+            # Delete performance_records for this content
+            conn.execute("DELETE FROM performance_records WHERE content_id = ?", (content_id,))
+
+            # Delete generation_logs for generation_tasks referencing this content
+            task_ids = conn.execute(
+                "SELECT id FROM generation_tasks WHERE content_id = ?", (content_id,)
+            ).fetchall()
+            for task_row in task_ids:
+                tid = task_row["id"]
+                conn.execute("DELETE FROM generation_logs WHERE generation_task_id = ?", (tid,))
+
+            # Delete generation_tasks referencing this content
+            conn.execute("DELETE FROM generation_tasks WHERE content_id = ?", (content_id,))
+
+            # Delete topic_suggestions that used this content
+            conn.execute("DELETE FROM topic_suggestions WHERE used_content_id = ?", (content_id,))
+
+            # Finally delete the content itself
             cur = conn.execute(
                 "DELETE FROM contents WHERE id = ?", (content_id,)
             )

@@ -2,17 +2,21 @@
 Blueprint for Account Group and Account REST APIs.
 """
 
+import logging
+
 from flask import Blueprint, request, jsonify
 from config import DB_PATH
 from services.account_service import AccountService, AccountGroupService
 from api.auth import require_auth
+
+logger = logging.getLogger(__name__)
 
 accounts_bp = Blueprint("accounts", __name__)
 group_svc = AccountGroupService(DB_PATH)
 account_svc = AccountService(DB_PATH)
 
 # ── Validation constants ────────────────────────────────────────────────
-VALID_PLATFORMS = {"instagram", "tiktok", "youtube", "twitter", "facebook", "xiaohongshu", "weibo", "bilibili"}
+VALID_PLATFORMS = {"instagram", "tiktok", "youtube", "twitter", "facebook", "xiaohongshu", "weibo", "bilibili", "douyin"}
 VALID_ACCOUNT_STATUSES = {"active", "paused", "banned", "warming", "login_expired", "need_verify", "rate_limited", "cooldown", "disabled"}
 
 
@@ -32,7 +36,8 @@ def create_account_group():
         group = group_svc.get(group_id)
         return jsonify(group), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/account-groups", methods=["GET"])
@@ -43,7 +48,8 @@ def list_account_groups():
         items = group_svc.list_all()
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/account-groups/<int:group_id>", methods=["PUT"])
@@ -63,7 +69,8 @@ def update_account_group(group_id):
         updated = group_svc.get(group_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/account-groups/<int:group_id>", methods=["DELETE"])
@@ -76,7 +83,8 @@ def delete_account_group(group_id):
             return jsonify({"error": "account group not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ── Account API ──────────────────────────────────────────────────────────
@@ -104,7 +112,8 @@ def create_account():
         account = account_svc.get(account_id)
         return jsonify(account), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/accounts", methods=["GET"])
@@ -129,7 +138,8 @@ def list_accounts():
         )
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/accounts/<int:account_id>", methods=["GET"])
@@ -146,7 +156,8 @@ def get_account(account_id):
             return jsonify({"error": "account not found"}), 404
         return jsonify(account), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/accounts/<int:account_id>", methods=["PUT"])
@@ -166,7 +177,8 @@ def update_account(account_id):
         updated = account_svc.get(account_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/accounts/<int:account_id>/pause", methods=["POST"])
@@ -181,7 +193,8 @@ def pause_account(account_id):
         updated = account_svc.get(account_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/accounts/<int:account_id>/resume", methods=["POST"])
@@ -196,7 +209,8 @@ def resume_account(account_id):
         updated = account_svc.get(account_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @accounts_bp.route("/api/accounts/<int:account_id>", methods=["DELETE"])
@@ -209,4 +223,5 @@ def delete_account(account_id):
             return jsonify({"error": "account not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in accounts API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500

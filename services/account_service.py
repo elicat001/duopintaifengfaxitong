@@ -132,7 +132,8 @@ class AccountService:
     # -- create ----------------------------------------------------------------
 
     def create(self, data: dict) -> int:
-        """Insert a new account and return its id."""
+        """Insert a new account and return its id.
+        Also creates a corresponding account_login_status record."""
         conn = get_connection(self.db_path)
         try:
             now = _now()
@@ -174,8 +175,36 @@ class AccountService:
                     now,
                 ),
             )
+            account_id = cur.lastrowid
+
+            # Create corresponding login_status record
+            conn.execute(
+                """
+                INSERT INTO account_login_status
+                    (account_id, login_state, health_score,
+                     consecutive_failures, total_login_attempts,
+                     total_login_successes, last_failure_reason,
+                     check_interval_minutes, alert_sent,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    account_id,
+                    "unknown",
+                    0.0,
+                    0,
+                    0,
+                    0,
+                    "",
+                    30,
+                    0,
+                    now,
+                    now,
+                ),
+            )
+
             conn.commit()
-            return cur.lastrowid
+            return account_id
         finally:
             conn.close()
 
@@ -348,9 +377,47 @@ class AccountService:
     # -- delete ----------------------------------------------------------------
 
     def delete(self, account_id: int) -> bool:
-        """Delete an account. Returns True if deleted."""
+        """Delete an account and all related records (cascade).
+        Deletes: jobs (and their job_logs/metrics), login_status,
+        credentials, proxy_assignments, login_logs, browser_login_sessions.
+        Returns True if the account was deleted."""
         conn = get_connection(self.db_path)
         try:
+            # Check existence first
+            row = conn.execute(
+                "SELECT id FROM accounts WHERE id = ?", (account_id,)
+            ).fetchone()
+            if row is None:
+                return False
+
+            # Delete job_logs and metrics for jobs belonging to this account
+            job_ids = conn.execute(
+                "SELECT id FROM jobs WHERE account_id = ?", (account_id,)
+            ).fetchall()
+            for job_row in job_ids:
+                jid = job_row["id"]
+                conn.execute("DELETE FROM job_logs WHERE job_id = ?", (jid,))
+                conn.execute("DELETE FROM metrics WHERE job_id = ?", (jid,))
+
+            # Delete jobs for this account
+            conn.execute("DELETE FROM jobs WHERE account_id = ?", (account_id,))
+
+            # Delete login status
+            conn.execute("DELETE FROM account_login_status WHERE account_id = ?", (account_id,))
+
+            # Delete credentials
+            conn.execute("DELETE FROM account_credentials WHERE account_id = ?", (account_id,))
+
+            # Delete proxy assignments
+            conn.execute("DELETE FROM account_proxy_assignments WHERE account_id = ?", (account_id,))
+
+            # Delete login logs
+            conn.execute("DELETE FROM login_logs WHERE account_id = ?", (account_id,))
+
+            # Delete browser login sessions
+            conn.execute("DELETE FROM browser_login_sessions WHERE account_id = ?", (account_id,))
+
+            # Finally delete the account itself
             cur = conn.execute(
                 "DELETE FROM accounts WHERE id = ?", (account_id,)
             )

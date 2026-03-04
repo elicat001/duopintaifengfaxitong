@@ -10,6 +10,7 @@ Blueprint for all AI module REST APIs:
 """
 
 import logging
+import sqlite3
 
 from flask import Blueprint, request, jsonify
 from config import DB_PATH, DEFAULT_RSS_FEEDS
@@ -49,8 +50,8 @@ def list_ai_providers():
         providers = get_all_providers()
         return jsonify(providers), 200
     except Exception as e:
-        logger.error("Failed to load AI providers: %s", e)
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Failed to load AI providers")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/configs", methods=["POST"])
@@ -64,8 +65,11 @@ def create_ai_config():
         config_id = ai_config_svc.create(data)
         config = ai_config_svc.get(config_id)
         return jsonify(config), 201
+    except sqlite3.IntegrityError:
+        return jsonify({"error": f"config_key '{data.get('config_key')}' already exists"}), 409
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/configs", methods=["GET"])
@@ -76,7 +80,8 @@ def list_ai_configs():
         items = ai_config_svc.list_all()
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/configs/<int:config_id>", methods=["GET"])
@@ -89,7 +94,8 @@ def get_ai_config(config_id):
             return jsonify({"error": "config not found"}), 404
         return jsonify(config), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/configs/<int:config_id>", methods=["PUT"])
@@ -107,7 +113,8 @@ def update_ai_config(config_id):
         updated = ai_config_svc.get(config_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/configs/<int:config_id>", methods=["DELETE"])
@@ -120,7 +127,8 @@ def delete_ai_config(config_id):
             return jsonify({"error": "config not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/configs/test", methods=["POST"])
@@ -151,7 +159,8 @@ def test_ai_config():
 
         return jsonify(result), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -169,7 +178,8 @@ def scan_trends():
         new_ids = trend_svc.scan_rss(feed_urls)
         return jsonify({"new_trend_ids": new_ids, "count": len(new_ids)}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/trends", methods=["GET"])
@@ -183,7 +193,8 @@ def list_trends():
         items = trend_svc.list_all(status=status, source=source, limit=limit)
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/trends/<int:trend_id>", methods=["GET"])
@@ -196,7 +207,8 @@ def get_trend(trend_id):
             return jsonify({"error": "trend not found"}), 404
         return jsonify(trend), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/trends/<int:trend_id>", methods=["DELETE"])
@@ -209,7 +221,8 @@ def delete_trend(trend_id):
             return jsonify({"error": "trend not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -238,7 +251,8 @@ def analyze_topics():
                 logger.warning("Failed to create topic suggestion: %s", e)
         return jsonify({"analyzed": len(results), "suggestions_created": len(created), "data": results}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/topics/suggestions", methods=["GET"])
@@ -252,7 +266,8 @@ def list_suggestions():
         items = topic_svc.list_all(status=status, sort_by=sort_by, limit=limit)
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/topics/suggestions/<int:suggestion_id>", methods=["GET"])
@@ -265,7 +280,8 @@ def get_suggestion(suggestion_id):
             return jsonify({"error": "suggestion not found"}), 404
         return jsonify(item), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/topics/suggestions/<int:suggestion_id>", methods=["PUT"])
@@ -283,7 +299,8 @@ def update_suggestion(suggestion_id):
         updated = topic_svc.get(suggestion_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/topics/suggestions/<int:suggestion_id>/generate", methods=["POST"])
@@ -324,7 +341,8 @@ def generate_from_suggestion(suggestion_id):
 
         return jsonify(result), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -353,7 +371,8 @@ def ai_generate_content():
         )
         return jsonify(result), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/generate/variants", methods=["POST"])
@@ -381,7 +400,8 @@ def ai_generate_variants():
         )
         return jsonify(results), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/generate/tasks", methods=["GET"])
@@ -395,7 +415,8 @@ def list_generation_tasks():
         items = gen_svc.list_tasks(status=status, task_type=task_type, limit=limit)
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/generate/tasks/<int:task_id>", methods=["GET"])
@@ -408,7 +429,8 @@ def get_generation_task(task_id):
             return jsonify({"error": "task not found"}), 404
         return jsonify(item), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -426,7 +448,8 @@ def list_generation_logs():
         items = gen_svc.list_logs(task_id=task_id, limit=limit)
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/logs/stats", methods=["GET"])
@@ -437,7 +460,8 @@ def generation_log_stats():
         stats = gen_svc.get_log_stats()
         return jsonify(stats), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -457,7 +481,8 @@ def create_pipeline():
         pipeline = pipeline_svc.get(pid)
         return jsonify(pipeline), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipelines", methods=["GET"])
@@ -468,7 +493,8 @@ def list_pipelines():
         items = pipeline_svc.list_all()
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipelines/<int:pipeline_id>", methods=["GET"])
@@ -481,7 +507,8 @@ def get_pipeline(pipeline_id):
             return jsonify({"error": "pipeline not found"}), 404
         return jsonify(pipeline), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipelines/<int:pipeline_id>", methods=["PUT"])
@@ -499,7 +526,8 @@ def update_pipeline(pipeline_id):
         updated = pipeline_svc.get(pipeline_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipelines/<int:pipeline_id>", methods=["DELETE"])
@@ -512,7 +540,8 @@ def delete_pipeline(pipeline_id):
             return jsonify({"error": "pipeline not found"}), 404
         return jsonify({"message": "deleted"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipelines/<int:pipeline_id>/toggle", methods=["POST"])
@@ -531,7 +560,8 @@ def toggle_pipeline(pipeline_id):
         updated = pipeline_svc.get(pipeline_id)
         return jsonify(updated), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipelines/<int:pipeline_id>/run", methods=["POST"])
@@ -550,7 +580,8 @@ def run_pipeline(pipeline_id):
         result = executor.execute(pipeline_id, triggered_by=triggered_by)
         return jsonify(result), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipelines/<int:pipeline_id>/runs", methods=["GET"])
@@ -566,7 +597,8 @@ def list_pipeline_runs(pipeline_id):
         items = run_svc.list_runs(pipeline_id=pipeline_id, status=status, limit=limit)
         return jsonify(items), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 @ai_bp.route("/api/ai/pipeline-runs/<int:run_id>", methods=["GET"])
@@ -579,7 +611,8 @@ def get_pipeline_run(run_id):
             return jsonify({"error": "pipeline run not found"}), 404
         return jsonify(run), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -620,4 +653,5 @@ def ai_dashboard():
             "log_stats": log_stats,
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in ai API")
+        return jsonify({"error": "服务器内部错误，请稍后重试"}), 500

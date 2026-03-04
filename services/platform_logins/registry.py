@@ -11,6 +11,7 @@ from services.platform_logins.instagram import InstagramLogin
 from services.platform_logins.tiktok import TiktokLogin
 from services.platform_logins.youtube import YoutubeLogin
 from services.platform_logins.twitter import TwitterLogin
+from services.platform_logins.facebook import FacebookLogin
 
 
 PLATFORM_HANDLERS = {
@@ -22,6 +23,7 @@ PLATFORM_HANDLERS = {
     "tiktok": TiktokLogin,
     "youtube": YoutubeLogin,
     "twitter": TwitterLogin,
+    "facebook": FacebookLogin,
 }
 
 
