@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:{{ width }}px; height:{{ height }}px; overflow:hidden;
+  -webkit-font-smoothing:antialiased; }
+body {
+  font-family: "PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  background: {{ colors.bg }};
+  color: {{ colors.text }};
+  display:flex; flex-direction:column; justify-content:center; align-items:center;
+  padding: {{ (height * 0.07)|int }}px {{ (width * 0.08)|int }}px;
+  position:relative;
+}
+
+/* Decorative dots */
+body::before {
+  content:""; position:absolute;
+  top:{{ (height * 0.06)|int }}px; left:{{ (width * 0.06)|int }}px;
+  width:{{ (width * 0.04)|int }}px; height:{{ (width * 0.04)|int }}px;
+  border-radius:50%; background:{{ colors.primary }}; opacity:0.12;
+}
+body::after {
+  content:""; position:absolute;
+  bottom:{{ (height * 0.08)|int }}px; right:{{ (width * 0.08)|int }}px;
+  width:{{ (width * 0.06)|int }}px; height:{{ (width * 0.06)|int }}px;
+  border-radius:50%; background:{{ colors.accent }}; opacity:0.1;
+}
+
+.page-num {
+  position:absolute; bottom:{{ (height * 0.025)|int }}px;
+  font-size:{{ (width * 0.014)|int }}px; opacity:0.3;
+  color:{{ colors.primary }}; letter-spacing:3px;
+  background:{{ colors.primary }}10;
+  padding:{{ (height * 0.006)|int }}px {{ (width * 0.02)|int }}px;
+  border-radius:{{ (width * 0.03)|int }}px;
+}
+
+/* ── Cover ── */
+.cover { text-align:center; max-width:85%; z-index:1; }
+.cover .emoji {
+  font-size:{{ (width * 0.08)|int }}px;
+  margin-bottom:{{ (height * 0.02)|int }}px;
+}
+.cover .title {
+  font-size:{{ (width * 0.048)|int }}px; font-weight:800; line-height:1.4;
+  color:{{ colors.primary }};
+}
+.cover .subtitle {
+  font-size:{{ (width * 0.022)|int }}px; margin-top:{{ (height * 0.025)|int }}px;
+  opacity:0.55; line-height:1.7;
+  color:{{ colors.text }};
+}
+.cover .accent {
+  display:inline-block; margin-top:{{ (height * 0.035)|int }}px;
+  padding:{{ (height * 0.013)|int }}px {{ (width * 0.045)|int }}px;
+  background:{{ colors.primary }};
+  color:#fff; border-radius:{{ (width * 0.05)|int }}px;
+  font-size:{{ (width * 0.019)|int }}px; font-weight:600;
+}
+
+/* ── Content ── */
+.content { width:84%; z-index:1; }
+.content .heading {
+  font-size:{{ (width * 0.035)|int }}px; font-weight:700;
+  color:{{ colors.primary }};
+  margin-bottom:{{ (height * 0.028)|int }}px;
+  padding:{{ (height * 0.01)|int }}px {{ (width * 0.03)|int }}px;
+  background:{{ colors.primary }}12;
+  border-radius:{{ (width * 0.015)|int }}px;
+  display:inline-block;
+}
+.content .point {
+  font-size:{{ (width * 0.022)|int }}px; line-height:1.7;
+  margin-bottom:{{ (height * 0.016)|int }}px;
+  padding:{{ (height * 0.015)|int }}px {{ (width * 0.04)|int }}px;
+  background:white;
+  border-radius:{{ (width * 0.02)|int }}px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.04);
+  position:relative;
+  padding-left:{{ (width * 0.06)|int }}px;
+}
+.content .point::before {
+  content:"🌿"; position:absolute; left:{{ (width * 0.02)|int }}px;
+  font-size:{{ (width * 0.018)|int }}px;
+}
+.content .body-text {
+  font-size:{{ (width * 0.022)|int }}px; line-height:1.8;
+  padding:{{ (height * 0.02)|int }}px {{ (width * 0.035)|int }}px;
+  background:white; border-radius:{{ (width * 0.02)|int }}px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.04);
+}
+.content .highlight {
+  margin-top:{{ (height * 0.02)|int }}px;
+  padding:{{ (height * 0.015)|int }}px {{ (width * 0.035)|int }}px;
+  background:{{ colors.accent }}15;
+  border-radius:{{ (width * 0.015)|int }}px;
+  font-size:{{ (width * 0.02)|int }}px; font-weight:600;
+  color:{{ colors.accent }};
+  text-align:center;
+}
+.content .note {
+  margin-top:{{ (height * 0.015)|int }}px;
+  font-size:{{ (width * 0.016)|int }}px; opacity:0.4;
+  text-align:center;
+}
+
+/* ── Quote ── */
+.quote-card { text-align:center; max-width:82%; z-index:1; }
+.quote-card .mark {
+  font-size:{{ (width * 0.1)|int }}px; line-height:0.6;
+  color:{{ colors.primary }}; opacity:0.15;
+}
+.quote-card .text {
+  font-size:{{ (width * 0.027)|int }}px; line-height:1.8;
+  margin-top:{{ (height * 0.02)|int }}px;
+  padding:{{ (height * 0.025)|int }}px {{ (width * 0.04)|int }}px;
+  background:white; border-radius:{{ (width * 0.025)|int }}px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.05);
+  font-style:italic;
+}
+.quote-card .author {
+  margin-top:{{ (height * 0.02)|int }}px;
+  font-size:{{ (width * 0.016)|int }}px; opacity:0.4;
+}
+
+/* ── Summary ── */
+.summary { width:84%; z-index:1; text-align:center; }
+.summary .heading {
+  font-size:{{ (width * 0.036)|int }}px; font-weight:700;
+  color:{{ colors.primary }};
+  margin-bottom:{{ (height * 0.025)|int }}px;
+}
+.summary .point {
+  font-size:{{ (width * 0.021)|int }}px; line-height:1.6;
+  margin-bottom:{{ (height * 0.012)|int }}px;
+  padding:{{ (height * 0.013)|int }}px {{ (width * 0.035)|int }}px;
+  background:white; border-radius:{{ (width * 0.05)|int }}px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  display:inline-block;
+}
+.summary .cta {
+  margin-top:{{ (height * 0.035)|int }}px;
+  font-size:{{ (width * 0.024)|int }}px; font-weight:700;
+  color:{{ colors.primary }};
+  padding:{{ (height * 0.015)|int }}px {{ (width * 0.06)|int }}px;
+  background:{{ colors.primary }}15;
+  border-radius:{{ (width * 0.05)|int }}px;
+  display:inline-block;
+}
+
+/* ── Data / Statistics ── */
+.data-card { width:86%; z-index:1; }
+.data-card .heading {
+  font-size:{{ (width * 0.032)|int }}px; font-weight:700;
+  color:{{ colors.primary }};
+  text-align:center; margin-bottom:{{ (height * 0.03)|int }}px;
+}
+.data-card .stats-grid {
+  display:flex; flex-wrap:wrap; justify-content:center;
+  gap:{{ (width * 0.025)|int }}px;
+}
+.data-card .stat-item {
+  flex:1; min-width:{{ (width * 0.2)|int }}px;
+  text-align:center;
+  padding:{{ (height * 0.022)|int }}px {{ (width * 0.02)|int }}px;
+}
+.data-card .stat-value {
+  display:inline-block;
+  font-size:{{ (width * 0.045)|int }}px; font-weight:800;
+  color:{{ colors.primary }}; line-height:1.2;
+  background:{{ colors.primary }}12;
+  padding:{{ (height * 0.008)|int }}px {{ (width * 0.025)|int }}px;
+  border-radius:{{ (width * 0.05)|int }}px;
+}
+.data-card .stat-label {
+  font-size:{{ (width * 0.019)|int }}px; font-weight:600;
+  margin-top:{{ (height * 0.01)|int }}px;
+  color:{{ colors.text }};
+}
+.data-card .stat-desc {
+  font-size:{{ (width * 0.014)|int }}px;
+  margin-top:{{ (height * 0.005)|int }}px;
+  opacity:0.4;
+}
+.data-card .stat-item::after {
+  content:""; display:block;
+  width:{{ (width * 0.015)|int }}px; height:{{ (width * 0.015)|int }}px;
+  border-radius:50%; background:{{ colors.accent }};
+  opacity:0.15; margin:{{ (height * 0.008)|int }}px auto 0;
+}
+.data-card .source {
+  margin-top:{{ (height * 0.02)|int }}px;
+  font-size:{{ (width * 0.014)|int }}px; opacity:0.35;
+  text-align:center; font-style:italic;
+}
+
+/* ── Steps ── */
+.steps-card { width:84%; z-index:1; }
+.steps-card .heading {
+  font-size:{{ (width * 0.034)|int }}px; font-weight:700;
+  color:{{ colors.primary }};
+  margin-bottom:{{ (height * 0.028)|int }}px;
+  padding:{{ (height * 0.008)|int }}px {{ (width * 0.025)|int }}px;
+  background:{{ colors.primary }}10;
+  border-radius:{{ (width * 0.015)|int }}px;
+  display:inline-block;
+}
+.steps-card .step-item {
+  display:flex; align-items:flex-start;
+  gap:{{ (width * 0.025)|int }}px;
+  margin-bottom:{{ (height * 0.018)|int }}px;
+  padding:{{ (height * 0.015)|int }}px {{ (width * 0.03)|int }}px;
+  background:white;
+  border-radius:{{ (width * 0.018)|int }}px;
+  box-shadow:0 3px 14px rgba(0,0,0,0.05);
+}
+.steps-card .step-num {
+  flex-shrink:0;
+  width:{{ (width * 0.045)|int }}px; height:{{ (width * 0.045)|int }}px;
+  border-radius:50%;
+  background:{{ colors.primary }}18;
+  color:{{ colors.primary }}; font-weight:800;
+  font-size:{{ (width * 0.022)|int }}px;
+  display:flex; align-items:center; justify-content:center;
+}
+.steps-card .step-content { flex:1; }
+.steps-card .step-title {
+  font-size:{{ (width * 0.022)|int }}px; font-weight:700;
+  color:{{ colors.text }}; line-height:1.4;
+}
+.steps-card .step-desc {
+  font-size:{{ (width * 0.017)|int }}px;
+  margin-top:{{ (height * 0.004)|int }}px;
+  opacity:0.5; line-height:1.6;
+}
+
+/* ── Comparison ── */
+.comparison-card { width:88%; z-index:1; }
+.comparison-card .heading {
+  font-size:{{ (width * 0.032)|int }}px; font-weight:700;
+  color:{{ colors.primary }};
+  text-align:center; margin-bottom:{{ (height * 0.025)|int }}px;
+}
+.comparison-card .columns {
+  display:flex; gap:{{ (width * 0.02)|int }}px;
+}
+.comparison-card .col {
+  flex:1;
+  background:white;
+  border-radius:{{ (width * 0.02)|int }}px;
+  box-shadow:0 3px 16px rgba(0,0,0,0.05);
+  overflow:hidden;
+}
+.comparison-card .col-label {
+  font-size:{{ (width * 0.017)|int }}px; font-weight:700;
+  color:white;
+  padding:{{ (height * 0.012)|int }}px {{ (width * 0.025)|int }}px;
+  letter-spacing:1px;
+}
+.comparison-card .col:first-child .col-label {
+  background:{{ colors.primary }};
+}
+.comparison-card .col:last-child .col-label {
+  background:{{ colors.accent }};
+}
+.comparison-card .col-body {
+  padding:{{ (height * 0.015)|int }}px {{ (width * 0.025)|int }}px;
+}
+.comparison-card .col-point {
+  font-size:{{ (width * 0.018)|int }}px; line-height:1.7;
+  margin-bottom:{{ (height * 0.008)|int }}px;
+  padding-left:{{ (width * 0.022)|int }}px;
+  position:relative;
+}
+.comparison-card .col-point::before {
+  content:""; position:absolute; left:0;
+  top:{{ (width * 0.008)|int }}px;
+  width:{{ (width * 0.008)|int }}px; height:{{ (width * 0.008)|int }}px;
+  border-radius:50%; background:{{ colors.primary }}; opacity:0.5;
+}
+
+/* ── Tip ── */
+.tip-card { width:84%; z-index:1; text-align:center; }
+.tip-card .icon {
+  font-size:{{ (width * 0.08)|int }}px;
+  margin-bottom:{{ (height * 0.015)|int }}px;
+}
+.tip-card .title {
+  font-size:{{ (width * 0.032)|int }}px; font-weight:700;
+  color:{{ colors.primary }};
+  margin-bottom:{{ (height * 0.02)|int }}px;
+}
+.tip-card .content-box {
+  text-align:left;
+  padding:{{ (height * 0.025)|int }}px {{ (width * 0.04)|int }}px;
+  background:white;
+  border-radius:{{ (width * 0.025)|int }}px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.06);
+  font-size:{{ (width * 0.021)|int }}px;
+  line-height:1.8;
+}
+.tip-card .note {
+  margin-top:{{ (height * 0.015)|int }}px;
+  font-size:{{ (width * 0.015)|int }}px; opacity:0.4;
+  font-style:italic;
+}
+</style></head>
+<body>
+
+{% if slide.type == "cover" %}
+<div class="cover">
+  <div class="emoji">{{ slide.accent_text or "✨" }}</div>
+  <div class="title">{{ slide.title }}</div>
+  {% if slide.subtitle %}<div class="subtitle">{{ slide.subtitle }}</div>{% endif %}
+</div>
+
+{% elif slide.type == "content" %}
+<div class="content">
+  <div class="heading">{{ slide.heading }}</div>
+  {% if slide.points %}
+    {% for p in slide.points %}<div class="point">{{ p }}</div>{% endfor %}
+  {% elif slide.body %}
+    <div class="body-text">{{ slide.body }}</div>
+  {% endif %}
+  {% if slide.highlight %}<div class="highlight">{{ slide.highlight }}</div>{% endif %}
+  {% if slide.note %}<div class="note">{{ slide.note }}</div>{% endif %}
+</div>
+
+{% elif slide.type == "quote" %}
+<div class="quote-card">
+  <div class="mark">&ldquo;</div>
+  <div class="text">{{ slide.quote }}</div>
+  {% if slide.author %}<div class="author">&mdash; {{ slide.author }}</div>{% endif %}
+</div>
+
+{% elif slide.type == "data" %}
+<div class="data-card">
+  {% if slide.heading %}<div class="heading">{{ slide.heading }}</div>{% endif %}
+  <div class="stats-grid">
+    {% for stat in slide.stats %}
+    <div class="stat-item">
+      <div class="stat-value">{{ stat.value }}</div>
+      <div class="stat-label">{{ stat.label }}</div>
+      {% if stat.description %}<div class="stat-desc">{{ stat.description }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if slide.source %}<div class="source">{{ slide.source }}</div>{% endif %}
+</div>
+
+{% elif slide.type == "steps" %}
+<div class="steps-card">
+  {% if slide.heading %}<div class="heading">{{ slide.heading }}</div>{% endif %}
+  {% for item in slide.items %}
+  <div class="step-item">
+    <div class="step-num">{{ item.step }}</div>
+    <div class="step-content">
+      <div class="step-title">{{ item.title }}</div>
+      {% if item.description %}<div class="step-desc">{{ item.description }}</div>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% elif slide.type == "comparison" %}
+<div class="comparison-card">
+  {% if slide.heading %}<div class="heading">{{ slide.heading }}</div>{% endif %}
+  <div class="columns">
+    <div class="col">
+      <div class="col-label">{{ slide.left_label }}</div>
+      <div class="col-body">
+        {% for p in slide.left_points %}<div class="col-point">{{ p }}</div>{% endfor %}
+      </div>
+    </div>
+    <div class="col">
+      <div class="col-label">{{ slide.right_label }}</div>
+      <div class="col-body">
+        {% for p in slide.right_points %}<div class="col-point">{{ p }}</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% elif slide.type == "tip" %}
+<div class="tip-card">
+  <div class="icon">{{ slide.icon }}</div>
+  <div class="title">{{ slide.title }}</div>
+  <div class="content-box">{{ slide.content }}</div>
+  {% if slide.note %}<div class="note">{{ slide.note }}</div>{% endif %}
+</div>
+
+{% elif slide.type == "summary" %}
+<div class="summary">
+  <div class="heading">{{ slide.heading }}</div>
+  {% if slide.points %}
+    {% for p in slide.points %}<div class="point">{{ p }}</div>{% endfor %}
+  {% endif %}
+  {% if slide.cta %}<div class="cta">{{ slide.cta }}</div>{% endif %}
+</div>
+
+{% endif %}
+
+<div class="page-num">{{ slide_index + 1 }} / {{ total_slides }}</div>
+</body></html>

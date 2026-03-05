@@ -853,5 +853,122 @@ def ai_dashboard():
             "log_stats": log_stats,
         }), 200
     except Exception as e:
-        logger.exception("Unexpected error in ai API")
+        logger.exception("Unexpected error in ai dashboard API")
         return jsonify({"error": "服务器内部错误，请稍后重试"}), 500
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Card Generation (图文卡片)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+@ai_bp.route("/api/ai/cards/templates", methods=["GET"])
+@require_auth
+def list_card_templates():
+    """Return available card templates with default colors."""
+    from services.card_render_service import CardRenderService, PLATFORM_SIZES
+    svc = CardRenderService()
+    return jsonify({
+        "templates": svc.list_templates(),
+        "platform_sizes": {k: {"width": v[0], "height": v[1]} for k, v in PLATFORM_SIZES.items()},
+    }), 200
+
+
+@ai_bp.route("/api/ai/generate/cards", methods=["POST"])
+@require_auth
+def ai_generate_cards():
+    """Generate AI content with structured slides, render to card images.
+
+    Request: {config_key, topic, platform, language, content_type,
+              style, slide_count, template, color_scheme}
+    Response: {content_id, variant_id, slides, asset_ids, preview_urls, tokens}
+    """
+    try:
+        data = request.get_json(force=True)
+        topic = (data.get("topic") or "").strip()
+        if not topic:
+            return jsonify({"error": "topic 不能为空"}), 400
+
+        config_key = data.get("config_key", "default")
+        platform = data.get("platform", "xiaohongshu")
+        language = data.get("language", "zh")
+        content_type = data.get("content_type", "image_carousel")
+        style = data.get("style", "")
+        slide_count = min(max(int(data.get("slide_count", 6)), 3), 9)
+        template = data.get("template", "minimal")
+        color_scheme = data.get("color_scheme")
+
+        # Resolve AI config
+        config = ai_config_svc.get_by_key(config_key)
+        if not config:
+            configs = ai_config_svc.list_all()
+            if not configs:
+                return jsonify({"error": "请先配置 AI 提供商"}), 400
+            config = configs[0]
+
+        result = gen_svc.generate_card_content(
+            ai_config=config,
+            topic=topic,
+            platform=platform,
+            language=language,
+            content_type=content_type,
+            style=style,
+            slide_count=slide_count,
+            template=template,
+            color_scheme=color_scheme,
+        )
+
+        return jsonify(result), 201
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.exception("Card generation failed")
+        return jsonify({"error": f"生成失败: {str(e)}"}), 500
+
+
+@ai_bp.route("/api/ai/cards/rerender", methods=["POST"])
+@require_auth
+def rerender_cards():
+    """Re-render cards with different template/colors (no AI call).
+
+    Request: {variant_id, slides, template, platform, color_scheme}
+    Response: {asset_ids, preview_urls}
+    """
+    try:
+        data = request.get_json(force=True)
+        variant_id = data.get("variant_id")
+        slides = data.get("slides")
+
+        if not variant_id or not slides:
+            return jsonify({"error": "variant_id 和 slides 不能为空"}), 400
+
+        template = data.get("template", "minimal")
+        platform = data.get("platform", "xiaohongshu")
+        color_scheme = data.get("color_scheme")
+
+        from services.card_render_service import CardRenderService
+        render_svc = CardRenderService()
+        try:
+            asset_ids = render_svc.rerender_and_replace(
+                variant_id, slides, template, platform, color_scheme)
+        finally:
+            render_svc.close()
+
+        # Build preview URLs
+        from services.content_service import AssetService
+        asset_svc = AssetService(DB_PATH)
+        preview_urls = []
+        for aid in asset_ids:
+            asset = asset_svc.get(aid)
+            if asset:
+                preview_urls.append(f"/api/uploads/{asset['storage_url']}")
+
+        return jsonify({
+            "asset_ids": asset_ids,
+            "preview_urls": preview_urls,
+        }), 200
+
+    except Exception as e:
+        logger.exception("Card rerender failed")
+        return jsonify({"error": f"重新渲染失败: {str(e)}"}), 500

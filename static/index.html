@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>分发调度系统</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1291,6 +1294,12 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
       <div class="nav-item" data-tab="jobs" onclick="navigate('jobs')">
         <span class="nav-icon">🚀</span><span>任务中心</span>
       </div>
+      <div class="nav-item" data-tab="replies" onclick="navigate('replies')">
+        <span class="nav-icon">💬</span><span>自动回复</span>
+      </div>
+      <div class="nav-item" data-tab="browser-pool" onclick="navigate('browser-pool')">
+        <span class="nav-icon">🌐</span><span>浏览器池</span>
+      </div>
     </div>
     <div class="sidebar-footer">
       <div style="margin-bottom:10px">
@@ -1486,10 +1495,147 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: rgba(12,16,2
       <div id="ai-tab-content"></div>
     </div>
 
+    <!-- Auto Reply Tab -->
+    <div class="tab-page" id="page-replies">
+      <div class="page-header"><h1>💬 自动回复</h1><p>AI智能回复，多平台自动评论互动</p></div>
+      <div class="ai-sub-tabs" id="reply-sub-tabs">
+        <button class="ai-tab active" onclick="switchReplyTab('tasks')">回复任务</button>
+        <button class="ai-tab" onclick="switchReplyTab('campaigns')">回复计划</button>
+        <button class="ai-tab" onclick="switchReplyTab('stats')">数据统计</button>
+      </div>
+      <div id="reply-tab-content"></div>
+    </div>
+
+    <!-- Browser Pool Tab -->
+    <div class="tab-page" id="page-browser-pool">
+      <div class="page-header"><h1>🌐 浏览器池</h1><p>持久化浏览器实例管理 · 指纹一致性 · Docker隔离</p></div>
+
+      <div class="ai-sub-tabs" id="pool-sub-tabs">
+        <button class="ai-sub-tab active" onclick="switchPoolTab('profiles')">浏览器档案</button>
+        <button class="ai-sub-tab" onclick="switchPoolTab('docker')">Docker容器</button>
+        <button class="ai-sub-tab" onclick="switchPoolTab('tasks')">通用任务</button>
+      </div>
+
+      <!-- Profiles Sub-tab -->
+      <div class="ai-sub-content" id="pool-tab-profiles">
+        <div class="action-bar">
+          <button class="btn btn-primary" onclick="cleanupProfiles()">清理过期档案</button>
+          <button class="btn btn-outline" onclick="loadBrowserProfiles()">刷新</button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead><tr>
+              <th>账号ID</th><th>平台</th><th>档案大小</th><th>指纹</th><th>连接模式</th><th>最后使用</th><th>操作</th>
+            </tr></thead>
+            <tbody id="profiles-table-body"><tr><td colspan="7" class="empty-state">加载中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Docker Sub-tab -->
+      <div class="ai-sub-content" id="pool-tab-docker" style="display:none">
+        <div class="action-bar">
+          <button class="btn btn-primary" onclick="openCdpModal()">添加CDP连接</button>
+          <button class="btn btn-outline" onclick="loadDockerStatus()">刷新状态</button>
+        </div>
+        <div class="stats-grid" id="docker-containers-grid">
+          <div class="stat-card"><div class="stat-label">Docker状态</div><div class="stat-value" id="docker-status-text">检测中...</div></div>
+        </div>
+        <div class="table-container" style="margin-top:20px">
+          <table class="data-table">
+            <thead><tr><th>容器名</th><th>状态</th><th>端口</th></tr></thead>
+            <tbody id="docker-table-body"><tr><td colspan="3" class="empty-state">加载中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Generic Tasks Sub-tab -->
+      <div class="ai-sub-content" id="pool-tab-tasks" style="display:none">
+        <div class="action-bar">
+          <button class="btn btn-primary" onclick="openGenericTaskModal()">创建任务</button>
+          <button class="btn btn-outline" onclick="loadGenericTasks()">刷新</button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead><tr>
+              <th>ID</th><th>类型</th><th>账号</th><th>平台</th><th>状态</th><th>创建时间</th><th>操作</th>
+            </tr></thead>
+            <tbody id="generic-tasks-table-body"><tr><td colspan="7" class="empty-state">加载中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /main-content -->
 </div><!-- /app -->
 
+<!-- CDP Connection Modal -->
+<div class="modal-overlay" id="cdp-connect-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header"><h3>添加CDP远程连接</h3><button class="modal-close" onclick="closeModal('cdp-connect-modal')">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>账号ID *</label><input type="number" id="cdp-account-id" placeholder="输入账号ID"></div>
+      <div class="form-group"><label>CDP地址 *</label><input type="text" id="cdp-url" placeholder="ws://localhost:9222"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('cdp-connect-modal')">取消</button>
+      <button class="btn btn-primary" onclick="connectCdp()">连接</button>
+    </div>
+  </div>
+</div>
+
+<!-- Generic Task Create Modal -->
+<div class="modal-overlay" id="generic-task-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header"><h3>创建通用任务</h3><button class="modal-close" onclick="closeModal('generic-task-modal')">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>任务类型 *</label><input type="text" id="gt-task-type" placeholder="如: publish, reply, scrape"></div>
+      <div class="form-group"><label>账号ID *</label><input type="number" id="gt-account-id" placeholder="账号ID"></div>
+      <div class="form-group"><label>平台</label><input type="text" id="gt-platform" placeholder="如: xiaohongshu"></div>
+      <div class="form-group"><label>参数 (JSON)</label><textarea id="gt-params" rows="4" placeholder='{"key": "value"}'>{}</textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('generic-task-modal')">取消</button>
+      <button class="btn btn-primary" onclick="submitGenericTask()">创建</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODALS ===== -->
+
+<!-- Reply Task Create Modal -->
+<div class="modal-overlay" id="reply-task-create-modal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header"><h3>新建手动回复</h3><button class="modal-close" onclick="closeModal('reply-task-create-modal')">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>平台 *</label>
+          <select id="rt-platform" onchange="loadReplyAccounts()">
+            <option value="xiaohongshu">小红书</option>
+            <option value="douyin">抖音</option>
+            <option value="weibo">微博</option>
+            <option value="bilibili">B站</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="youtube">YouTube</option>
+            <option value="twitter">Twitter/X</option>
+            <option value="facebook">Facebook</option>
+          </select>
+        </div>
+        <div class="form-group"><label>账号 *</label><select id="rt-account"><option value="">选择账号</option></select></div>
+      </div>
+      <div class="form-group"><label>帖子URL *</label><input type="text" id="rt-url" placeholder="粘贴帖子链接"></div>
+      <div class="form-group"><label>帖子内容（可选，用于AI生成更好的回复）</label><textarea id="rt-post-content" rows="3" placeholder="复制帖子的文字内容..."></textarea></div>
+      <div style="margin:12px 0"><button class="btn-secondary btn-sm" onclick="previewReply()">AI 预览回复</button></div>
+      <div id="rt-preview-area" style="display:none"></div>
+      <div class="form-group"><label>回复内容</label><textarea id="rt-reply-content" rows="3" placeholder="手动输入或通过AI预览生成"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('reply-task-create-modal')">取消</button>
+      <button class="btn-primary" onclick="submitManualReplyTask()">创建任务</button>
+    </div>
+  </div>
+</div>
 
 <!-- Content Create Modal -->
 <div class="modal-overlay" id="content-create-modal">
@@ -1947,9 +2093,9 @@ const API = {
     return data;
   },
 
-  get(url) { return this.request('GET', url); },
-  post(url, body) { return this.request('POST', url, body); },
-  put(url, body) { return this.request('PUT', url, body); },
+  get(url, timeoutMs) { return this.request('GET', url, undefined, timeoutMs); },
+  post(url, body, timeoutMs) { return this.request('POST', url, body, timeoutMs); },
+  put(url, body, timeoutMs) { return this.request('PUT', url, body, timeoutMs); },
   del(url) { return this.request('DELETE', url); },
 
   async upload(url, files, timeoutMs = 120000) {
@@ -2116,6 +2262,8 @@ function navigate(tab) {
     case 'policies': loadPolicies(); break;
     case 'publish': loadPublishPage(); break;
     case 'jobs': initJobFilters(); loadJobs(); break;
+    case 'replies': switchReplyTab('tasks'); break;
+    case 'browser-pool': switchPoolTab('profiles'); break;
   }
 }
 
@@ -3920,7 +4068,7 @@ async function renderAiTrends() {
 async function scanTrends() {
   try {
     showLoading();
-    const result = await API.post('/api/ai/trends/scan', {});
+    const result = await API.post('/api/ai/trends/scan', {}, 120000);
     toast(`趋势扫描完成，新增 ${result.count || (result.new_trend_ids||[]).length || (result.new_trends || []).length || 0} 条`, 'success');
     if (currentAiTab === 'trends') renderAiTrends();
   } catch(e) { toast('扫描失败: ' + e.message, 'error'); }
@@ -4210,7 +4358,7 @@ function loadTopicStats(topics) {
 async function analyzeTopics() {
   try {
     showLoading();
-    const result = await API.post('/api/ai/topics/analyze', {});
+    const result = await API.post('/api/ai/topics/analyze', {}, 120000);
     toast('选题分析完成', 'success');
     if (currentAiTab === 'topics') renderTopicSuggestions();
   } catch(e) { toast('分析失败: ' + e.message, 'error'); }
@@ -4221,7 +4369,7 @@ async function generateFromSuggestion(id) {
   try {
     showLoading();
     await API.put('/api/ai/topics/suggestions/' + id, { status: 'accepted' });
-    const result = await API.post('/api/ai/topics/suggestions/' + id + '/generate', {});
+    const result = await API.post('/api/ai/topics/suggestions/' + id + '/generate', {}, 120000);
     toast('已采纳选题并开始生成内容', 'success');
     renderTopicSuggestions();
   } catch(e) { toast('操作失败: ' + e.message, 'error'); }
@@ -4434,7 +4582,34 @@ async function loadAiGenerate() {
           </div>
         </div>
         <div class="form-group"><label>风格描述（可选）</label><textarea id="aig-style" placeholder="描述期望的内容风格，如: 幽默轻松、专业严谨、年轻化..."></textarea></div>
-        <button class="btn-primary" onclick="startGeneration()" style="width:100%;padding:12px;font-size:15px">✨ 开始生成</button>
+        <hr style="border-color:var(--border-color);margin:16px 0">
+        <h4 style="margin-bottom:12px;font-size:14px;color:var(--primary)">🎨 图文卡片设置</h4>
+        <div class="form-row">
+          <div class="form-group"><label>卡片模板</label>
+            <select id="aig-template">
+              <option value="minimal">简约</option>
+              <option value="fashion">时尚</option>
+              <option value="business">商务</option>
+              <option value="fresh">清新</option>
+            </select>
+          </div>
+          <div class="form-group"><label>卡片数量</label>
+            <select id="aig-slide-count">
+              <option value="4">4 张</option>
+              <option value="5">5 张</option>
+              <option value="6" selected>6 张</option>
+              <option value="7">7 张</option>
+              <option value="8">8 张</option>
+              <option value="9">9 张</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>主色调（可选）</label><input type="color" id="aig-primary-color" value="#6c5ce7" style="width:50px;height:32px;padding:2px;cursor:pointer">
+          <span style="font-size:12px;color:var(--muted);margin-left:8px">留空使用模板默认配色</span></div>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="btn-primary" onclick="startCardGeneration()" style="flex:1;padding:12px;font-size:15px">🎨 生成图文卡片</button>
+          <button class="btn-secondary" onclick="startGeneration()" style="flex:1;padding:12px;font-size:15px">✨ 仅生成文案</button>
+        </div>
       </div>
       <div class="ai-gen-preview" id="aig-preview">
         <div class="ai-gen-preview-empty">
@@ -4467,7 +4642,7 @@ async function startGeneration() {
     const result = await API.post('/api/ai/generate/content', {
       topic, platform, language, content_type,
       style: style || undefined, config_key
-    });
+    }, 120000);
     const c = result.content_data || result.content || result;
     const contentId = result.content_id || c.content_id || c.id || 0;
     preview.innerHTML = `<div class="ai-gen-result">
@@ -4525,6 +4700,114 @@ async function generateVariants(contentId) {
     } else {
       toast('变体生成失败: ' + e.message, 'error');
     }
+  } finally { hideLoading(); }
+}
+
+/* --- Card Generation --- */
+let _lastCardResult = null; // Cache for rerender
+
+async function startCardGeneration() {
+  const topic = document.getElementById('aig-topic').value.trim();
+  if (!topic) { toast('请输入选题或主题', 'warning'); return; }
+  const platform = document.getElementById('aig-platform').value;
+  const language = document.getElementById('aig-language').value;
+  const content_type = document.getElementById('aig-content-type').value;
+  const style = document.getElementById('aig-style').value.trim();
+  const config_key = document.getElementById('aig-config').value || undefined;
+  const template = document.getElementById('aig-template').value;
+  const slide_count = parseInt(document.getElementById('aig-slide-count').value) || 6;
+  const primaryColor = document.getElementById('aig-primary-color').value;
+
+  const preview = document.getElementById('aig-preview');
+  preview.innerHTML = '<div class="ai-gen-preview-loading"><span class="ai-gen-pulse"></span> AI 正在生成图文卡片，请稍候...</div>';
+
+  try {
+    const color_scheme = primaryColor ? { primary: primaryColor } : undefined;
+    const result = await API.post('/api/ai/generate/cards', {
+      topic, platform, language, content_type,
+      style: style || undefined, config_key,
+      template, slide_count, color_scheme
+    }, 120000);
+
+    _lastCardResult = result;
+    renderCardPreview(result, platform);
+    toast('图文卡片生成成功', 'success');
+    loadGenerateHistory();
+  } catch(e) {
+    preview.innerHTML = `<div class="ai-gen-preview-empty" style="color:var(--red)">
+      <div style="font-size:48px;margin-bottom:12px">❌</div>
+      <p>生成失败: ${esc(e.message)}</p>
+    </div>`;
+    toast('生成失败: ' + e.message, 'error');
+  }
+}
+
+function renderCardPreview(result, platform) {
+  const preview = document.getElementById('aig-preview');
+  const c = result.content_data || result;
+  const slides = result.slides || [];
+  const urls = result.preview_urls || [];
+  const token = state.token || '';
+
+  let cardsHtml = '';
+  if (urls.length > 0) {
+    cardsHtml = `<div style="display:flex;gap:10px;overflow-x:auto;padding:10px 0">
+      ${urls.map((url, i) => `<div style="flex:0 0 auto;text-align:center">
+        <img src="${url}?token=${token}" style="height:240px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.15);cursor:pointer"
+             onclick="window.open('${url}?token=${token}','_blank')" title="点击查看大图">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${i+1}/${urls.length}</div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  preview.innerHTML = `<div class="ai-gen-result">
+    <h4>${esc(c.title || c.headline || '')}</h4>
+    ${cardsHtml}
+    ${c.caption ? `<div class="ai-gen-field" style="margin-top:12px"><div class="field-label">配文</div><div class="field-value" style="max-height:120px;overflow-y:auto">${esc(c.caption)}</div></div>` : ''}
+    ${c.hashtags && c.hashtags.length ? `<div class="ai-gen-field"><div class="field-label">话题标签</div><div class="field-value">${c.hashtags.map(h => '<span class="tag tag-blue">' + esc(h) + '</span>').join(' ')}</div></div>` : ''}
+    <div class="ai-gen-meta">
+      <span>Token: ${(result.tokens && result.tokens.total) || '-'}</span>
+      <span>耗时: ${result.latency_ms || '-'}ms</span>
+      <span>卡片: ${urls.length}张</span>
+      <span>内容ID: ${result.content_id || '-'}</span>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-secondary" onclick="rerenderCards('minimal')">简约</button>
+      <button class="btn-secondary" onclick="rerenderCards('fashion')">时尚</button>
+      <button class="btn-secondary" onclick="rerenderCards('business')">商务</button>
+      <button class="btn-secondary" onclick="rerenderCards('fresh')">清新</button>
+      <span style="font-size:12px;color:var(--muted);align-self:center">← 换模板重新渲染</span>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn-primary" onclick="generateVariants(${result.content_id || 0})">🌐 一键生成全平台变体</button>
+    </div>
+  </div>`;
+}
+
+async function rerenderCards(newTemplate) {
+  if (!_lastCardResult || !_lastCardResult.variant_id || !_lastCardResult.slides) {
+    toast('没有可重新渲染的卡片数据', 'warning'); return;
+  }
+  const platform = document.getElementById('aig-platform').value;
+  const primaryColor = document.getElementById('aig-primary-color').value;
+  const color_scheme = primaryColor ? { primary: primaryColor } : undefined;
+
+  try {
+    showLoading();
+    const result = await API.post('/api/ai/cards/rerender', {
+      variant_id: _lastCardResult.variant_id,
+      slides: _lastCardResult.slides,
+      template: newTemplate,
+      platform,
+      color_scheme
+    }, 120000);
+
+    _lastCardResult.preview_urls = result.preview_urls;
+    _lastCardResult.asset_ids = result.asset_ids;
+    renderCardPreview(_lastCardResult, platform);
+    toast(`已切换为「${newTemplate}」模板`, 'success');
+  } catch(e) {
+    toast('重新渲染失败: ' + e.message, 'error');
   } finally { hideLoading(); }
 }
 
@@ -5024,6 +5307,656 @@ document.addEventListener('DOMContentLoaded', () => {
     navigate('dashboard');
   }
 });
+
+// ===== AUTO-REPLY MODULE =====
+
+let _replyCurrentTab = 'tasks';
+let _replyCampaigns = [];
+let _replyTasks = [];
+
+const REPLY_STATES = [
+  { key: 'pending', label: '等待中', cls: 'tag-gray' },
+  { key: 'generating', label: '生成中', cls: 'tag-blue' },
+  { key: 'ready', label: '就绪', cls: 'tag-cyan' },
+  { key: 'executing', label: '执行中', cls: 'tag-orange' },
+  { key: 'verifying', label: '验证中', cls: 'tag-purple' },
+  { key: 'success', label: '成功', cls: 'tag-green' },
+  { key: 'failed', label: '失败', cls: 'tag-red' },
+  { key: 'cancelled', label: '已取消', cls: 'tag-gray' },
+  { key: 'skipped', label: '已跳过', cls: 'tag-gray' },
+];
+
+const CAMPAIGN_STATES = [
+  { key: 'draft', label: '草稿', cls: 'tag-gray' },
+  { key: 'active', label: '运行中', cls: 'tag-green' },
+  { key: 'paused', label: '已暂停', cls: 'tag-yellow' },
+  { key: 'completed', label: '已完成', cls: 'tag-blue' },
+  { key: 'failed', label: '失败', cls: 'tag-red' },
+];
+
+const REPLY_TONES = [
+  { key: 'friendly', label: '友善亲切' },
+  { key: 'professional', label: '专业理性' },
+  { key: 'humorous', label: '幽默风趣' },
+  { key: 'insightful', label: '有深度有见解' },
+];
+
+function replyStateTag(st) {
+  const info = REPLY_STATES.find(s => s.key === st) || { label: st, cls: 'tag-gray' };
+  return `<span class="tag ${info.cls}">${info.label}</span>`;
+}
+
+function campaignStateTag(st) {
+  const info = CAMPAIGN_STATES.find(s => s.key === st) || { label: st, cls: 'tag-gray' };
+  return `<span class="tag ${info.cls}">${info.label}</span>`;
+}
+
+function switchReplyTab(tab) {
+  _replyCurrentTab = tab;
+  document.querySelectorAll('#reply-sub-tabs .ai-tab').forEach(b => b.classList.remove('active'));
+  const btns = document.querySelectorAll('#reply-sub-tabs .ai-tab');
+  const idx = { tasks: 0, campaigns: 1, stats: 2 }[tab] || 0;
+  if (btns[idx]) btns[idx].classList.add('active');
+
+  const ct = document.getElementById('reply-tab-content');
+  switch (tab) {
+    case 'tasks': ct.innerHTML = renderReplyTasksTab(); loadReplyTasks(); break;
+    case 'campaigns': ct.innerHTML = renderReplyCampaignsTab(); loadReplyCampaigns(); break;
+    case 'stats': ct.innerHTML = '<div class="card"><div class="card-body" id="reply-stats-body"><p>加载中...</p></div></div>'; loadReplyStats(); break;
+  }
+}
+
+// ── Tasks Tab ──
+
+function renderReplyTasksTab() {
+  return `
+    <div class="toolbar" style="margin-bottom:16px">
+      <button class="btn-primary btn-sm" onclick="openModal('reply-task-create-modal')">+ 新建手动回复</button>
+      <button class="btn-secondary btn-sm" onclick="loadReplyTasks()">刷新</button>
+      <select id="reply-task-state-filter" onchange="loadReplyTasks()" style="margin-left:auto;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+        <option value="">全部状态</option>
+        ${REPLY_STATES.map(s => `<option value="${s.key}">${s.label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card">
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>ID</th><th>平台</th><th>帖子</th><th>回复内容</th><th>状态</th><th>计划执行</th><th>操作</th></tr></thead>
+          <tbody id="reply-tasks-tbody"><tr><td colspan="7">加载中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function loadReplyTasks() {
+  try {
+    const stateFilter = document.getElementById('reply-task-state-filter')?.value || '';
+    let url = '/api/reply-tasks?limit=50';
+    if (stateFilter) url += '&state=' + stateFilter;
+    const data = await API.get(url);
+    _replyTasks = data.tasks || [];
+
+    const tbody = document.getElementById('reply-tasks-tbody');
+    if (!tbody) return;
+
+    if (_replyTasks.length === 0) {
+      tbody.innerHTML = emptyRow(7, '暂无回复任务');
+      return;
+    }
+
+    tbody.innerHTML = _replyTasks.map(t => `<tr>
+      <td>${t.id}</td>
+      <td>${platformLabel(t.platform)}</td>
+      <td style="max-width:200px"><a href="${esc(t.post_url)}" target="_blank" style="color:var(--accent)">${esc((t.post_title || t.post_url || '').substring(0, 40))}${(t.post_title||t.post_url||'').length>40?'...':''}</a></td>
+      <td style="max-width:200px" title="${esc(t.reply_content||'')}">${esc((t.reply_content||'').substring(0, 50))}${(t.reply_content||'').length>50?'...':''}</td>
+      <td>${replyStateTag(t.state)}</td>
+      <td>${t.scheduled_at ? new Date(t.scheduled_at).toLocaleString('zh-CN') : '-'}</td>
+      <td><div class="td-actions">
+        ${t.state === 'failed' ? `<button class="btn-xs btn-warning" onclick="retryReplyTask(${t.id})">重试</button>` : ''}
+        ${['pending','ready','generating'].includes(t.state) ? `<button class="btn-xs btn-danger" onclick="cancelReplyTask(${t.id})">取消</button>` : ''}
+        <button class="btn-xs btn-secondary" onclick="viewReplyTaskDetail(${t.id})">详情</button>
+      </div></td>
+    </tr>`).join('');
+  } catch (e) { toast('加载回复任务失败: ' + e.message, 'error'); }
+}
+
+async function retryReplyTask(id) {
+  try {
+    showLoading();
+    await API.post(`/api/reply-tasks/${id}/retry`);
+    toast('任务已重新排队', 'success');
+    loadReplyTasks();
+  } catch (e) { toast('重试失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+async function cancelReplyTask(id) {
+  showConfirm('取消任务', '确定取消此回复任务？', async () => {
+    try {
+      showLoading();
+      await API.post(`/api/reply-tasks/${id}/cancel`);
+      toast('任务已取消', 'success');
+      loadReplyTasks();
+    } catch (e) { toast('取消失败: ' + e.message, 'error'); }
+    finally { hideLoading(); }
+  });
+}
+
+async function viewReplyTaskDetail(id) {
+  try {
+    showLoading();
+    const task = await API.get(`/api/reply-tasks/${id}`);
+    hideLoading();
+
+    const logs = task.logs || [];
+    let logsHtml = logs.length === 0 ? '<p style="color:var(--text-muted)">暂无日志</p>' :
+      `<div class="timeline">${logs.map(l => `<div class="timeline-item ${l.status === 'error' ? 'error' : 'success'}">
+        <div class="tl-time">${l.created_at || ''}</div>
+        <div class="tl-step">${esc(l.step)}</div>
+        <div class="tl-msg">${esc(l.message)}</div>
+        ${l.screenshot_path ? `<img src="/api/screenshots/${l.screenshot_path}?token=${state.token}" style="max-width:300px;margin-top:8px;border-radius:6px" onerror="this.style.display='none'">` : ''}
+      </div>`).join('')}</div>`;
+
+    let alts = [];
+    try { alts = JSON.parse(task.reply_content_alternatives || '[]'); } catch(e) {}
+
+    let html = `<div class="modal-overlay show" id="reply-task-detail-modal" onclick="if(event.target===this)closeModal('reply-task-detail-modal')">
+      <div class="modal" style="max-width:700px">
+        <div class="modal-header"><h3>回复任务 #${task.id}</h3><button class="modal-close" onclick="closeModal('reply-task-detail-modal')">&times;</button></div>
+        <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+          <div class="form-row">
+            <div class="form-group"><label>平台</label><div>${platformLabel(task.platform)}</div></div>
+            <div class="form-group"><label>状态</label><div>${replyStateTag(task.state)}</div></div>
+          </div>
+          <div class="form-group"><label>帖子URL</label><div><a href="${esc(task.post_url)}" target="_blank" style="color:var(--accent);word-break:break-all">${esc(task.post_url)}</a></div></div>
+          <div class="form-group"><label>帖子作者</label><div>${esc(task.post_author || '-')}</div></div>
+          <div class="form-group"><label>帖子内容</label><div style="padding:10px;background:var(--bg);border-radius:6px;max-height:100px;overflow-y:auto">${esc(task.post_content || '-')}</div></div>
+          <div class="form-group"><label>回复内容</label><div style="padding:10px;background:var(--accent-bg);border-radius:6px;border:1px solid var(--accent)">${esc(task.reply_content || '-')}</div></div>
+          ${alts.length > 1 ? `<div class="form-group"><label>备选回复</label>${alts.map((a,i) => `<div style="padding:6px 10px;margin:4px 0;background:var(--bg);border-radius:4px;font-size:13px">${i+1}. ${esc(a)}</div>`).join('')}</div>` : ''}
+          ${task.last_error_message ? `<div class="form-group"><label>错误信息</label><div style="color:var(--danger)">${esc(task.last_error_message)}</div></div>` : ''}
+          <div class="form-row">
+            <div class="form-group"><label>浏览耗时</label><div>${task.browsing_duration_ms || 0}ms</div></div>
+            <div class="form-group"><label>阅读耗时</label><div>${task.reading_duration_ms || 0}ms</div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>打字耗时</label><div>${task.typing_duration_ms || 0}ms</div></div>
+            <div class="form-group"><label>总耗时</label><div>${task.total_duration_ms || 0}ms</div></div>
+          </div>
+          ${task.reply_screenshot ? `<div class="form-group"><label>截图</label><img src="/api/screenshots/${task.reply_screenshot}?token=${state.token}" style="max-width:100%;border-radius:6px" onerror="this.style.display='none'"></div>` : ''}
+          <h4 style="margin-top:16px">执行日志</h4>
+          ${logsHtml}
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+  } catch (e) { hideLoading(); toast('加载详情失败: ' + e.message, 'error'); }
+}
+
+// ── Campaigns Tab ──
+
+function renderReplyCampaignsTab() {
+  return `
+    <div class="toolbar" style="margin-bottom:16px">
+      <button class="btn-primary btn-sm" onclick="openCreateCampaignModal()">+ 新建回复计划</button>
+      <button class="btn-secondary btn-sm" onclick="loadReplyCampaigns()">刷新</button>
+    </div>
+    <div class="card">
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>ID</th><th>名称</th><th>平台</th><th>关键词</th><th>状态</th><th>进度</th><th>下次执行</th><th>操作</th></tr></thead>
+          <tbody id="reply-campaigns-tbody"><tr><td colspan="8">加载中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function loadReplyCampaigns() {
+  try {
+    const data = await API.get('/api/reply-campaigns');
+    _replyCampaigns = data.campaigns || [];
+
+    const tbody = document.getElementById('reply-campaigns-tbody');
+    if (!tbody) return;
+
+    if (_replyCampaigns.length === 0) {
+      tbody.innerHTML = emptyRow(8, '暂无回复计划');
+      return;
+    }
+
+    tbody.innerHTML = _replyCampaigns.map(c => {
+      let keywords = c.keywords || [];
+      if (typeof keywords === 'string') try { keywords = JSON.parse(keywords); } catch(e) { keywords = []; }
+      const kwText = keywords.slice(0, 3).join(', ') + (keywords.length > 3 ? '...' : '');
+
+      return `<tr>
+        <td>${c.id}</td>
+        <td>${esc(c.name)}</td>
+        <td>${platformLabel(c.platform)}</td>
+        <td style="max-width:150px" title="${esc(keywords.join(', '))}">${esc(kwText) || '-'}</td>
+        <td>${campaignStateTag(c.status)}</td>
+        <td><span style="font-size:12px">${c.total_replied||0}/${c.total_discovered||0} (失败:${c.total_failed||0})</span></td>
+        <td>${c.next_run_at ? new Date(c.next_run_at).toLocaleString('zh-CN') : '-'}</td>
+        <td><div class="td-actions">
+          ${c.status === 'draft' || c.status === 'paused' || c.status === 'completed' || c.status === 'failed' ? `<button class="btn-xs btn-success" onclick="startCampaign(${c.id})">启动</button>` : ''}
+          ${c.status === 'active' ? `<button class="btn-xs btn-warning" onclick="pauseCampaign(${c.id})">暂停</button>` : ''}
+          <button class="btn-xs btn-danger" onclick="deleteCampaign(${c.id})">删除</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  } catch (e) { toast('加载回复计划失败: ' + e.message, 'error'); }
+}
+
+async function startCampaign(id) {
+  try {
+    showLoading();
+    await API.post(`/api/reply-campaigns/${id}/start`);
+    toast('计划已启动', 'success');
+    loadReplyCampaigns();
+  } catch (e) { toast('启动失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+async function pauseCampaign(id) {
+  try {
+    showLoading();
+    await API.post(`/api/reply-campaigns/${id}/pause`);
+    toast('计划已暂停', 'success');
+    loadReplyCampaigns();
+  } catch (e) { toast('暂停失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+async function deleteCampaign(id) {
+  showConfirm('删除计划', '确定删除此回复计划？相关任务也将被删除。', async () => {
+    try {
+      showLoading();
+      await API.del(`/api/reply-campaigns/${id}`);
+      toast('计划已删除', 'success');
+      loadReplyCampaigns();
+    } catch (e) { toast('删除失败: ' + e.message, 'error'); }
+    finally { hideLoading(); }
+  });
+}
+
+// ── Stats Tab ──
+
+async function loadReplyStats() {
+  try {
+    const stats = await API.get('/api/reply-stats');
+    const body = document.getElementById('reply-stats-body');
+    if (!body) return;
+
+    body.innerHTML = `
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-value">${stats.total || 0}</div><div class="stat-label">总回复数</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.success_rate || 0}%</div><div class="stat-label">成功率</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.active_campaigns || 0}</div><div class="stat-label">活跃计划</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.today_replies || 0}</div><div class="stat-label">今日回复</div></div>
+      </div>
+      <div style="margin-top:20px">
+        <div class="form-row">
+          <div class="card" style="flex:1;padding:16px">
+            <h4 style="margin-bottom:12px">状态分布</h4>
+            ${REPLY_STATES.filter(s => stats[s.key]).map(s => `<div style="display:flex;align-items:center;margin:6px 0">
+              ${replyStateTag(s.key)} <span style="margin-left:auto;font-weight:600">${stats[s.key] || 0}</span>
+            </div>`).join('')}
+          </div>
+          <div class="card" style="flex:1;padding:16px">
+            <h4 style="margin-bottom:12px">计划概览</h4>
+            <div style="margin:6px 0">总计划数: <strong>${stats.total_campaigns || 0}</strong></div>
+            <div style="margin:6px 0">活跃计划: <strong>${stats.active_campaigns || 0}</strong></div>
+            <div style="margin:6px 0">今日回复: <strong>${stats.today_replies || 0}</strong></div>
+          </div>
+        </div>
+      </div>`;
+  } catch (e) { toast('加载统计失败: ' + e.message, 'error'); }
+}
+
+// ── Create Manual Reply Task ──
+
+async function loadReplyAccounts() {
+  try {
+    const platform = document.getElementById('rt-platform')?.value;
+    const data = await API.get('/api/accounts?platform=' + (platform || ''));
+    const accounts = Array.isArray(data) ? data : (data.accounts || []);
+    const sel = document.getElementById('rt-account');
+    if (sel) {
+      sel.innerHTML = accounts.length === 0
+        ? '<option value="">无可用账号</option>'
+        : accounts.map(a => `<option value="${a.id}">${esc(a.handle)} (${esc(a.display_name||'')})</option>`).join('');
+    }
+  } catch(e) { /* ignore */ }
+}
+
+async function submitManualReplyTask() {
+  const platform = document.getElementById('rt-platform').value;
+  const account_id = parseInt(document.getElementById('rt-account').value);
+  const post_url = document.getElementById('rt-url').value.trim();
+
+  if (!post_url) { toast('请输入帖子URL', 'warning'); return; }
+  if (!account_id) { toast('请选择账号', 'warning'); return; }
+
+  // Check if preview was done and reply content exists
+  const replyContent = document.getElementById('rt-reply-content')?.value?.trim() || '';
+
+  try {
+    showLoading();
+    const data = { account_id, platform, post_url };
+    if (replyContent) {
+      data.reply_content = replyContent;
+      data.state = 'ready';
+    }
+
+    await API.post('/api/reply-tasks', data);
+    toast('回复任务已创建', 'success');
+    closeModal('reply-task-create-modal');
+    loadReplyTasks();
+  } catch (e) { toast('创建失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+async function previewReply() {
+  const post_url = document.getElementById('rt-url').value.trim();
+  const platform = document.getElementById('rt-platform').value;
+  const postContent = document.getElementById('rt-post-content')?.value?.trim() || '';
+
+  if (!postContent && !post_url) { toast('请输入帖子内容或URL', 'warning'); return; }
+
+  try {
+    showLoading();
+    const result = await API.post('/api/reply-preview', {
+      post_content: postContent || `帖子链接: ${post_url}`,
+      platform: platform,
+      tone: 'friendly',
+      language: 'zh',
+    }, 120000);
+    hideLoading();
+
+    const alts = result.alternatives || [];
+    const previewDiv = document.getElementById('rt-preview-area');
+    if (previewDiv && alts.length > 0) {
+      previewDiv.innerHTML = `<label>AI 生成的评论（点击选择）</label>` +
+        alts.map((a, i) => `<div class="reply-preview-item" style="padding:10px;margin:6px 0;background:var(--bg);border-radius:6px;cursor:pointer;border:2px solid ${i===0?'var(--accent)':'transparent'}" onclick="selectReplyAlt(this, ${i})">${esc(a)}</div>`).join('');
+
+      document.getElementById('rt-reply-content').value = alts[0] || '';
+      previewDiv.style.display = 'block';
+    }
+  } catch (e) { hideLoading(); toast('预览失败: ' + e.message, 'error'); }
+}
+
+function selectReplyAlt(el, idx) {
+  el.parentElement.querySelectorAll('.reply-preview-item').forEach(d => d.style.borderColor = 'transparent');
+  el.style.borderColor = 'var(--accent)';
+  const alts = Array.from(el.parentElement.querySelectorAll('.reply-preview-item')).map(d => d.textContent);
+  document.getElementById('rt-reply-content').value = alts[idx] || '';
+}
+
+// ── Create Campaign ──
+
+function openCreateCampaignModal() {
+  // Build modal dynamically with account list
+  const platformOptions = ['xiaohongshu','douyin','weibo','bilibili','instagram','tiktok','youtube','twitter','facebook']
+    .map(p => `<option value="${p}">${p}</option>`).join('');
+
+  const toneOptions = REPLY_TONES.map(t => `<option value="${t.key}">${t.label}</option>`).join('');
+
+  let html = `<div class="modal-overlay show" id="campaign-create-modal" onclick="if(event.target===this)closeModal('campaign-create-modal')">
+    <div class="modal" style="max-width:650px">
+      <div class="modal-header"><h3>新建回复计划</h3><button class="modal-close" onclick="closeModal('campaign-create-modal')">&times;</button></div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div class="form-group"><label>计划名称 *</label><input type="text" id="rc-name" placeholder="如：产品推广回复"></div>
+        <div class="form-row">
+          <div class="form-group"><label>平台 *</label><select id="rc-platform" onchange="loadCampaignAccounts()">${platformOptions}</select></div>
+          <div class="form-group"><label>账号 *</label><select id="rc-account"><option value="">加载中...</option></select></div>
+        </div>
+        <div class="form-group"><label>搜索关键词（回车添加）</label>
+          <input type="text" id="rc-keyword-input" placeholder="输入关键词后按回车" onkeydown="if(event.key==='Enter'){event.preventDefault();addCampaignKeyword();}">
+          <div id="rc-keywords-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>每轮发现帖子数</label><input type="number" id="rc-target-count" value="10" min="1" max="50"></div>
+          <div class="form-group"><label>每轮最大回复数</label><input type="number" id="rc-max-replies" value="5" min="1" max="20"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>回复语气</label><select id="rc-tone">${toneOptions}</select></div>
+          <div class="form-group"><label>最大回复长度</label><input type="number" id="rc-max-length" value="200" min="20" max="500"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>回复间隔（分钟）</label><input type="number" id="rc-min-interval" value="15" min="5"></div>
+          <div class="form-group"><label>最大间隔（分钟）</label><input type="number" id="rc-max-interval" value="60" min="10"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>每小时最多回复</label><input type="number" id="rc-max-hour" value="3" min="1" max="10"></div>
+          <div class="form-group"><label>每日最多回复</label><input type="number" id="rc-max-day" value="15" min="1" max="50"></div>
+        </div>
+        <div class="form-group"><label>自定义AI指令（可选）</label><textarea id="rc-custom" rows="2" placeholder="额外的回复要求..."></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('campaign-create-modal')">取消</button>
+        <button class="btn-primary" onclick="submitCreateCampaign()">创建计划</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  loadCampaignAccounts();
+}
+
+let _campaignKeywords = [];
+function addCampaignKeyword() {
+  const input = document.getElementById('rc-keyword-input');
+  const kw = input.value.trim();
+  if (kw && !_campaignKeywords.includes(kw)) {
+    _campaignKeywords.push(kw);
+    renderCampaignKeywords();
+  }
+  input.value = '';
+}
+
+function removeCampaignKeyword(idx) {
+  _campaignKeywords.splice(idx, 1);
+  renderCampaignKeywords();
+}
+
+function renderCampaignKeywords() {
+  const list = document.getElementById('rc-keywords-list');
+  if (!list) return;
+  list.innerHTML = _campaignKeywords.map((kw, i) =>
+    `<span class="tag tag-blue" style="cursor:pointer" onclick="removeCampaignKeyword(${i})">${esc(kw)} ×</span>`
+  ).join('');
+}
+
+async function loadCampaignAccounts() {
+  try {
+    const platform = document.getElementById('rc-platform')?.value;
+    const data = await API.get('/api/accounts?platform=' + (platform || ''));
+    const accounts = Array.isArray(data) ? data : (data.accounts || []);
+    const sel = document.getElementById('rc-account');
+    if (sel) {
+      sel.innerHTML = accounts.length === 0
+        ? '<option value="">无可用账号</option>'
+        : accounts.map(a => `<option value="${a.id}">${esc(a.handle)} (${esc(a.display_name||'')})</option>`).join('');
+    }
+  } catch(e) { /* ignore */ }
+}
+
+async function submitCreateCampaign() {
+  const name = document.getElementById('rc-name').value.trim();
+  const platform = document.getElementById('rc-platform').value;
+  const account_id = parseInt(document.getElementById('rc-account').value);
+
+  if (!name) { toast('请输入计划名称', 'warning'); return; }
+  if (!account_id) { toast('请选择账号', 'warning'); return; }
+  if (_campaignKeywords.length === 0) { toast('请至少添加一个关键词', 'warning'); return; }
+
+  try {
+    showLoading();
+    await API.post('/api/reply-campaigns', {
+      name,
+      platform,
+      account_id,
+      keywords: _campaignKeywords,
+      target_post_count: parseInt(document.getElementById('rc-target-count').value) || 10,
+      max_replies_per_run: parseInt(document.getElementById('rc-max-replies').value) || 5,
+      reply_tone: document.getElementById('rc-tone').value,
+      reply_max_length: parseInt(document.getElementById('rc-max-length').value) || 200,
+      min_interval_minutes: parseInt(document.getElementById('rc-min-interval').value) || 15,
+      max_interval_minutes: parseInt(document.getElementById('rc-max-interval').value) || 60,
+      max_replies_per_hour: parseInt(document.getElementById('rc-max-hour').value) || 3,
+      max_replies_per_day: parseInt(document.getElementById('rc-max-day').value) || 15,
+      custom_instructions: document.getElementById('rc-custom').value.trim(),
+    });
+    toast('回复计划已创建', 'success');
+    _campaignKeywords = [];
+    closeModal('campaign-create-modal');
+    loadReplyCampaigns();
+  } catch (e) { toast('创建失败: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Browser Pool Management
+// ═══════════════════════════════════════════════════════════
+
+function switchPoolTab(tab) {
+  document.querySelectorAll('#pool-sub-tabs .ai-sub-tab').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('#page-browser-pool .ai-sub-content').forEach(c => c.style.display = 'none');
+  const el = document.getElementById('pool-tab-' + tab);
+  if (el) el.style.display = '';
+  switch(tab) {
+    case 'profiles': loadBrowserProfiles(); break;
+    case 'docker': loadDockerStatus(); break;
+    case 'tasks': loadGenericTasks(); break;
+  }
+}
+
+async function loadBrowserProfiles() {
+  try {
+    const profiles = await API.get('/api/browser-profiles');
+    const tbody = document.getElementById('profiles-table-body');
+    if (!profiles.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无浏览器档案</td></tr>'; return; }
+    tbody.innerHTML = profiles.map(p => `<tr>
+      <td><strong>#${p.account_id}</strong></td>
+      <td>${p.platform || '-'}</td>
+      <td>${formatFileSize(p.total_size || 0)}</td>
+      <td>${p.has_fingerprint ? '<span class="badge badge-success">已生成</span>' : '<span class="badge badge-muted">无</span>'}</td>
+      <td><span class="badge badge-info">${p.connection_mode || 'local'}</span></td>
+      <td>${p.last_used ? new Date(p.last_used).toLocaleString() : '-'}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteProfile(${p.account_id})">删除</button></td>
+    </tr>`).join('');
+  } catch (e) { toast('加载档案失败: ' + e.message, 'error'); }
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+async function deleteProfile(accountId) {
+  if (!confirm('确定删除账号 #' + accountId + ' 的浏览器档案？所有本地缓存和指纹将丢失。')) return;
+  try {
+    await API.del('/api/browser-profiles/' + accountId);
+    toast('档案已删除');
+    loadBrowserProfiles();
+  } catch (e) { toast('删除失败: ' + e.message, 'error'); }
+}
+
+async function cleanupProfiles() {
+  const days = prompt('清理多少天未使用的档案？', '30');
+  if (!days) return;
+  try {
+    const data = await API.post('/api/browser-profiles/cleanup', { max_age_days: parseInt(days) });
+    toast('已清理 ' + data.deleted_count + ' 个过期档案');
+    loadBrowserProfiles();
+  } catch (e) { toast('清理失败: ' + e.message, 'error'); }
+}
+
+async function loadDockerStatus() {
+  try {
+    const data = await API.get('/api/browser-pool/docker-status');
+    document.getElementById('docker-status-text').textContent = data.docker_available ? '已连接' : '未安装';
+    const tbody = document.getElementById('docker-table-body');
+    if (!data.containers || !data.containers.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-state">无运行中的容器</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.containers.map(c => `<tr>
+      <td><strong>${c.name}</strong></td>
+      <td><span class="badge ${c.status.includes('Up') ? 'badge-success' : 'badge-danger'}">${c.status}</span></td>
+      <td>${c.ports}</td>
+    </tr>`).join('');
+  } catch (e) { toast('检查Docker状态失败: ' + e.message, 'error'); }
+}
+
+function openCdpModal() { document.getElementById('cdp-connect-modal').classList.add('active'); }
+
+async function connectCdp() {
+  const accountId = document.getElementById('cdp-account-id').value;
+  const cdpUrl = document.getElementById('cdp-url').value;
+  if (!accountId || !cdpUrl) { toast('请填写完整信息', 'error'); return; }
+  try {
+    await API.post('/api/browser-pool/connect-cdp', { account_id: parseInt(accountId), cdp_url: cdpUrl });
+    toast('CDP连接已配置');
+    closeModal('cdp-connect-modal');
+    loadBrowserProfiles();
+  } catch (e) { toast('连接失败: ' + e.message, 'error'); }
+}
+
+async function loadGenericTasks() {
+  try {
+    const tasks = await API.get('/api/generic-tasks?limit=50');
+    const tbody = document.getElementById('generic-tasks-table-body');
+    if (!tasks.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无通用任务</td></tr>'; return; }
+    const stateColors = {pending:'badge-muted',executing:'badge-info',success:'badge-success',failed:'badge-danger',cancelled:'badge-muted'};
+    tbody.innerHTML = tasks.map(t => `<tr>
+      <td>#${t.id}</td>
+      <td><span class="badge badge-info">${t.task_type}</span></td>
+      <td>#${t.account_id}</td>
+      <td>${t.platform || '-'}</td>
+      <td><span class="badge ${stateColors[t.state] || 'badge-muted'}">${t.state}</span></td>
+      <td>${new Date(t.created_at).toLocaleString()}</td>
+      <td>
+        ${t.state === 'pending' ? `<button class="btn btn-sm btn-primary" onclick="executeGenericTask(${t.id})">执行</button>` : ''}
+        ${t.state === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="cancelGenericTask(${t.id})">取消</button>` : ''}
+      </td>
+    </tr>`).join('');
+  } catch (e) { toast('加载任务失败: ' + e.message, 'error'); }
+}
+
+function openGenericTaskModal() { document.getElementById('generic-task-modal').classList.add('active'); }
+
+async function submitGenericTask() {
+  const taskType = document.getElementById('gt-task-type').value;
+  const accountId = document.getElementById('gt-account-id').value;
+  const platform = document.getElementById('gt-platform').value;
+  let params = {};
+  try { params = JSON.parse(document.getElementById('gt-params').value || '{}'); } catch(e) { toast('参数JSON格式错误', 'error'); return; }
+  if (!taskType || !accountId) { toast('请填写任务类型和账号ID', 'error'); return; }
+  try {
+    await API.post('/api/generic-tasks', { task_type: taskType, account_id: parseInt(accountId), platform, params });
+    toast('任务已创建');
+    closeModal('generic-task-modal');
+    loadGenericTasks();
+  } catch (e) { toast('创建失败: ' + e.message, 'error'); }
+}
+
+async function executeGenericTask(taskId) {
+  try {
+    await API.post('/api/generic-tasks/' + taskId + '/execute');
+    toast('任务执行中');
+    loadGenericTasks();
+  } catch (e) { toast('执行失败: ' + e.message, 'error'); }
+}
+
+async function cancelGenericTask(taskId) {
+  try {
+    await API.post('/api/generic-tasks/' + taskId + '/cancel');
+    toast('任务已取消');
+    loadGenericTasks();
+  } catch (e) { toast('取消失败: ' + e.message, 'error'); }
+}
 </script>
 </body>
 </html>

@@ -600,5 +600,169 @@ def init_database(db_path: str) -> None:
     # Proxy assignments
     c.execute("CREATE INDEX IF NOT EXISTS idx_proxy_assign_active ON account_proxy_assignments(is_active)")
 
+    # ── Auto-Reply Module Tables ───────────────────────────────────────
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS reply_campaigns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            campaign_type TEXT DEFAULT 'keyword',
+            platform TEXT NOT NULL,
+            account_id INTEGER NOT NULL,
+            keywords TEXT DEFAULT '[]',
+            exclude_keywords TEXT DEFAULT '[]',
+            target_post_count INTEGER DEFAULT 10,
+            max_replies_per_run INTEGER DEFAULT 5,
+            schedule_type TEXT DEFAULT 'immediate',
+            schedule_windows TEXT DEFAULT '[]',
+            min_interval_minutes INTEGER DEFAULT 15,
+            max_interval_minutes INTEGER DEFAULT 60,
+            max_replies_per_hour INTEGER DEFAULT 3,
+            max_replies_per_day INTEGER DEFAULT 15,
+            cooldown_minutes INTEGER DEFAULT 30,
+            ai_config_key TEXT DEFAULT 'default',
+            reply_tone TEXT DEFAULT 'friendly',
+            reply_language TEXT DEFAULT 'zh',
+            reply_max_length INTEGER DEFAULT 200,
+            custom_instructions TEXT DEFAULT '',
+            warmup_enabled INTEGER DEFAULT 1,
+            warmup_browse_count INTEGER DEFAULT 3,
+            min_read_seconds INTEGER DEFAULT 5,
+            max_read_seconds INTEGER DEFAULT 30,
+            typing_speed_min INTEGER DEFAULT 30,
+            typing_speed_max INTEGER DEFAULT 80,
+            status TEXT DEFAULT 'draft',
+            total_discovered INTEGER DEFAULT 0,
+            total_replied INTEGER DEFAULT 0,
+            total_failed INTEGER DEFAULT 0,
+            last_run_at TEXT,
+            next_run_at TEXT,
+            error_message TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (account_id) REFERENCES accounts(id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS reply_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_id INTEGER,
+            account_id INTEGER NOT NULL,
+            platform TEXT NOT NULL,
+            post_url TEXT NOT NULL,
+            post_author TEXT DEFAULT '',
+            post_title TEXT DEFAULT '',
+            post_content TEXT DEFAULT '',
+            post_media_type TEXT DEFAULT '',
+            post_likes INTEGER DEFAULT 0,
+            post_comments INTEGER DEFAULT 0,
+            reply_content TEXT DEFAULT '',
+            reply_content_alternatives TEXT DEFAULT '[]',
+            selected_alternative INTEGER DEFAULT 0,
+            scheduled_at TEXT,
+            state TEXT DEFAULT 'pending',
+            attempt_count INTEGER DEFAULT 0,
+            max_attempts INTEGER DEFAULT 3,
+            reply_post_url TEXT DEFAULT '',
+            reply_screenshot TEXT DEFAULT '',
+            last_error_code TEXT DEFAULT '',
+            last_error_message TEXT DEFAULT '',
+            browsing_duration_ms INTEGER DEFAULT 0,
+            reading_duration_ms INTEGER DEFAULT 0,
+            typing_duration_ms INTEGER DEFAULT 0,
+            total_duration_ms INTEGER DEFAULT 0,
+            ai_tokens_used INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (campaign_id) REFERENCES reply_campaigns(id),
+            FOREIGN KEY (account_id) REFERENCES accounts(id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS reply_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reply_task_id INTEGER NOT NULL,
+            step TEXT DEFAULT 'execute',
+            status TEXT DEFAULT 'ok',
+            error_code TEXT DEFAULT '',
+            message TEXT DEFAULT '',
+            screenshot_path TEXT DEFAULT '',
+            duration_ms INTEGER DEFAULT 0,
+            raw TEXT DEFAULT '{}',
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (reply_task_id) REFERENCES reply_tasks(id)
+        )
+    """)
+
+    # Auto-reply indexes
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_campaigns_status ON reply_campaigns(status)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_campaigns_platform ON reply_campaigns(platform)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_campaigns_account ON reply_campaigns(account_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_campaigns_next_run ON reply_campaigns(next_run_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_tasks_state ON reply_tasks(state)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_tasks_campaign ON reply_tasks(campaign_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_tasks_account ON reply_tasks(account_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_tasks_platform ON reply_tasks(platform)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_tasks_scheduled ON reply_tasks(scheduled_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_tasks_state_scheduled ON reply_tasks(state, scheduled_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_tasks_post_url ON reply_tasks(post_url)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_logs_task ON reply_logs(reply_task_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_reply_logs_step ON reply_logs(step)")
+
+    # ── Browser Pool & Generic Task Tables ─────────────────────────────
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS browser_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL UNIQUE,
+            platform TEXT DEFAULT '',
+            profile_dir TEXT NOT NULL,
+            fingerprint_seed TEXT DEFAULT '{}',
+            cdp_url TEXT DEFAULT '',
+            connection_mode TEXT DEFAULT 'local',
+            docker_container_id TEXT DEFAULT '',
+            is_active INTEGER DEFAULT 1,
+            total_sessions INTEGER DEFAULT 0,
+            total_duration_ms INTEGER DEFAULT 0,
+            last_used_at TEXT,
+            last_error TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS generic_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_type TEXT NOT NULL,
+            account_id INTEGER NOT NULL,
+            platform TEXT DEFAULT '',
+            params TEXT DEFAULT '{}',
+            scheduled_at TEXT,
+            state TEXT DEFAULT 'pending',
+            result TEXT DEFAULT '{}',
+            steps TEXT DEFAULT '[]',
+            error_message TEXT DEFAULT '',
+            attempt_count INTEGER DEFAULT 0,
+            max_attempts INTEGER DEFAULT 3,
+            started_at TEXT,
+            completed_at TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (account_id) REFERENCES accounts(id)
+        )
+    """)
+
+    c.execute("CREATE INDEX IF NOT EXISTS idx_browser_profiles_account ON browser_profiles(account_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_browser_profiles_active ON browser_profiles(is_active)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_generic_tasks_type ON generic_tasks(task_type)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_generic_tasks_state ON generic_tasks(state)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_generic_tasks_account ON generic_tasks(account_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_generic_tasks_scheduled ON generic_tasks(scheduled_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_generic_tasks_type_state ON generic_tasks(task_type, state)")
+
     conn.commit()
     conn.close()

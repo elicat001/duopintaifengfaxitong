@@ -212,6 +212,292 @@ class AIGenerationService:
 }}"""
         return system_prompt, user_prompt
 
+    # ── 图文卡片 Prompt ──────────────────────────────────────
+
+    def build_card_content_prompt(self, topic: str, platform: str, language: str,
+                                   content_type: str, style: str = "",
+                                   slide_count: int = 6,
+                                   references: list = None) -> tuple:
+        """构造图文卡片 prompt，让 AI 返回带 slides 结构的 JSON。"""
+        platform_limits = {
+            "instagram": 2200, "tiktok": 300, "youtube": 5000,
+            "xiaohongshu": 1000, "weibo": 2000, "twitter": 280, "facebook": 5000,
+        }
+        max_chars = platform_limits.get(platform, 2000)
+        lang_name = {"zh": "中文", "en": "English", "ja": "日本語"}.get(language, language)
+
+        # Platform-specific tone guidance
+        platform_tone = {
+            "xiaohongshu": "种草感、个人分享视角、像闺蜜聊天一样亲切真实，多用「我」「亲测」「真的会谢」等第一人称表达，营造真实体验感",
+            "tiktok": "短平快、口语化、节奏感强，用短句制造冲击力，像在跟朋友面对面说话，适当用反问和感叹增加互动感",
+            "weibo": "话题性强、紧跟热点、观点鲜明犀利，善用金句和反转，语言要有传播力和讨论价值",
+            "instagram": "aesthetic、aspirational、storytelling风格，文案要有画面感和情绪共鸣，英文可混搭使用，注重lifestyle感",
+            "youtube": "深度专业但不枯燥，像一个懂行的朋友在分享干货，逻辑清晰有层次，适当加入个人观点和见解",
+            "twitter": "犀利简短、一针见血，每句话都要有信息密度，善用对比和转折制造记忆点",
+            "facebook": "社区感、温暖真诚、鼓励互动分享，像在社群里发起一个有价值的讨论",
+        }
+        tone_guide = platform_tone.get(platform, "专业且有吸引力，兼顾信息价值和可读性")
+
+        system_prompt = f"""你是{platform}平台TOP级别的图文内容创作者，在{topic}领域拥有百万级粉丝。
+你深谙社交媒体传播规律，擅长用视觉化文案制造「停留感」和「收藏欲」。
+
+【核心创作原则】
+1. 钩子思维：每张卡片的前5个字必须抓住注意力，使用反问、数据冲击、反常识、痛点共鸣等手法
+2. 情绪驱动：文案要触发具体情绪（好奇、焦虑、惊喜、认同、向往），而非平铺直叙
+3. 信息密度：每句话都要有「获得感」，拒绝正确但无用的废话
+4. 节奏变化：长短句交替使用，短句制造冲击（3-7字），长句提供深度（15-25字），避免所有句子都一样长
+5. 具象表达：用具体数字、真实场景、对比案例代替抽象描述（「省了2小时」而非「提高效率」）
+
+【{platform}平台调性】
+{tone_guide}
+
+【严格禁止使用的烂大街表达】
+- 禁止：「干货满满」「建议收藏」「强烈推荐」「不看后悔」「全网最全」「满满的收获」
+- 禁止：「你值得拥有」「赶紧行动吧」「一定要看完」「太绝了」「yyds」
+- 禁止：所有不提供具体信息的空洞形容词和万能句式
+- 替代策略：用具体场景和数据说话，让读者自己得出「值得收藏」的结论
+
+【文案素材技巧】
+- Power Words：使用有画面感和触发行动的动词（「拆解」「避坑」「翻倍」「逆袭」「碾压」）
+- Curiosity Gap：制造信息缺口让人想继续看（「最后一条90%的人都不知道」→ 但要确保兑现承诺）
+- Social Proof：巧妙植入可信度信号（具体数字、时间线、真实场景）
+- Contrast：善用对比制造张力（做了vs没做、之前vs之后、外行vs内行）
+
+所有输出必须使用{lang_name}。
+每个要点控制在30字以内，但要在30字内塞入最大信息量。"""
+
+        ref_text = ""
+        if references:
+            ref_text = "\n参考高表现内容（学习其结构和手法，但不要照搬）:\n" + "\n".join(f"- {r}" for r in references[:5])
+
+        user_prompt = f"""请为{platform}平台创作一组{topic}主题的图文轮播内容（{slide_count}张卡片）。
+
+【基本要求】
+- 语言: {lang_name}
+- 卡片数量: {slide_count}张（含封面和结尾页）
+- 每个要点简洁有力，适合在图片上排版
+{f'- 风格要求: {style}' if style else ''}
+{ref_text}
+
+【卡片编排策略】
+按照以下节奏编排{slide_count}张卡片，制造「刷到停不下来」的体验：
+1. Hook（封面）→ 用封面制造强烈好奇心，让人想右滑
+2. Value（价值页）→ 交付核心干货，每页一个清晰观点
+3. Evidence（证据页）→ 用数据/对比/案例增强说服力
+4. Action（结尾页）→ 明确的下一步行动 + 互动引导
+
+卡片类型不要全用content，至少混合使用3种以上类型，让视觉节奏有变化。
+
+【卡片类型说明】
+
+1. cover（封面页）：大标题要制造好奇心缺口，副标题补充价值承诺
+2. content（内容页）：有小标题和要点列表（3-5个要点）或段落正文，可附带emoji装饰
+3. quote（引用页）：一句有感染力的话，可以是金句、数据结论或反常识观点
+4. summary（结尾总结页）：核心要点回顾 + 具体可执行的行动号召
+5. data（数据页）：用大数字制造视觉冲击，配合简短解读让数据说话
+6. steps（步骤页）：分步骤拆解，每步有明确动作指令，降低执行门槛
+7. comparison（对比页）：before/after 或 pros/cons 对比，让差异一目了然
+8. tip（技巧页）：一个实用技巧/窍门，配合具体操作说明
+
+请严格按以下JSON格式输出（不要输出其他内容）:
+{{
+  "title": "整体标题（30字以内，要有信息增量）",
+  "headline": "封面钩子文案（15字以内，制造好奇心缺口）",
+  "caption": "配文描述（{max_chars}字以内）。结构要求：第一句用情绪钩子引发共鸣 → 中间段提炼核心价值点 → 最后用具体问题引导评论互动。不要用'建议收藏'等废话。",
+  "hashtags": ["话题标签1", "话题标签2", ...],
+  "tags": ["分类标签1", "分类标签2", ...],
+  "slides": [
+    {{
+      "type": "cover",
+      "title": "封面大标题（制造好奇心）",
+      "subtitle": "副标题/价值承诺",
+      "accent_text": "数据亮点或核心标签（可选）"
+    }},
+    {{
+      "type": "content",
+      "heading": "小标题",
+      "points": ["要点1（30字以内，有具体信息）", "要点2", "要点3"],
+      "highlight": "重点强调句（可选）",
+      "emoji": "📌"
+    }},
+    {{
+      "type": "data",
+      "heading": "数据说话（可选标题）",
+      "stats": [
+        {{"value": "90%", "label": "指标名称", "description": "一句话解读这个数据意味着什么"}},
+        {{"value": "3x", "label": "指标名称", "description": "对比说明"}}
+      ],
+      "source": "数据来源（可选，增加可信度）",
+      "emoji": "📊"
+    }},
+    {{
+      "type": "steps",
+      "heading": "步骤标题（如：3步搞定xxx）",
+      "items": [
+        {{"step": 1, "title": "步骤名称", "description": "具体怎么做（15字以内）"}},
+        {{"step": 2, "title": "步骤名称", "description": "具体怎么做"}},
+        {{"step": 3, "title": "步骤名称", "description": "具体怎么做"}}
+      ],
+      "emoji": "🔢"
+    }},
+    {{
+      "type": "comparison",
+      "heading": "对比标题",
+      "left_label": "Before/普通做法",
+      "right_label": "After/高手做法",
+      "left_points": ["对比项1", "对比项2", "对比项3"],
+      "right_points": ["对比项1", "对比项2", "对比项3"],
+      "emoji": "⚡"
+    }},
+    {{
+      "type": "tip",
+      "icon": "💡",
+      "title": "技巧标题",
+      "content": "具体技巧内容，要有可操作性",
+      "note": "补充说明或注意事项（可选）",
+      "emoji": "💡"
+    }},
+    {{
+      "type": "quote",
+      "quote": "一句有感染力的金句/数据结论/反常识观点",
+      "emoji": "💬"
+    }},
+    {{
+      "type": "summary",
+      "heading": "总结",
+      "points": ["核心要点1（回顾最有价值的信息）", "核心要点2"],
+      "cta": "具体的行动号召（告诉读者下一步做什么，而不是'关注我'）"
+    }}
+  ]
+}}
+
+注意：以上slides示例展示了所有可用类型，实际输出请根据内容需要从中选择{slide_count}张，
+不需要每种类型都用。确保类型多样（至少3种不同类型），节奏有变化。"""
+        return system_prompt, user_prompt
+
+    def generate_card_content(self, ai_config: dict, topic: str, platform: str,
+                               language: str, content_type: str = "image_carousel",
+                               style: str = "", slide_count: int = 6,
+                               template: str = "minimal",
+                               color_scheme: dict = None,
+                               references: list = None,
+                               suggestion_id: int = None,
+                               pipeline_run_id: int = None) -> dict:
+        """
+        完整的图文卡片生成流程:
+        1. 调用 AI 生成带 slides 的结构化内容
+        2. 创建 content 记录
+        3. 创建 variant 记录
+        4. 调用 CardRenderService 渲染图片并关联
+        5. 返回 {task_id, content_id, variant_id, asset_ids, preview_urls, slides, tokens}
+        """
+        # Step 1: 创建任务
+        task_id = self._create_task('card_content', {
+            'topic': topic, 'platform': platform, 'language': language,
+            'content_type': content_type, 'style': style,
+            'slide_count': slide_count, 'template': template,
+        }, suggestion_id=suggestion_id, pipeline_run_id=pipeline_run_id)
+
+        try:
+            self._update_task(task_id, status='running', started_at=datetime.now().isoformat())
+
+            # Step 2: 构造 prompt 并调用 AI
+            sys_prompt, user_prompt = self.build_card_content_prompt(
+                topic, platform, language, content_type, style,
+                slide_count, references)
+            self._update_task(task_id, prompt_used=user_prompt,
+                             provider=ai_config.get('provider', 'anthropic'),
+                             model=ai_config.get('model', ''))
+
+            result = self.call_ai(
+                provider=ai_config.get('provider', 'anthropic'),
+                model=ai_config.get('model', 'claude-sonnet-4-20250514'),
+                api_key=_resolve_api_key(ai_config.get('api_key_encrypted', '')),
+                system_prompt=sys_prompt,
+                user_prompt=user_prompt,
+                base_url=ai_config.get('base_url', ''),
+                max_tokens=ai_config.get('max_tokens', 4096),
+                temperature=ai_config.get('temperature', 0.7),
+            )
+
+            # Step 3: 解析 JSON（包含 slides）
+            content_data = self._parse_json_response(result['content'])
+            slides = content_data.get('slides', [])
+            if not slides:
+                raise ValueError("AI 未返回 slides 数据")
+
+            # Step 4: 创建 content 记录
+            from services.content_service import ContentService, VariantService
+            cs = ContentService(self.db_path)
+            content_id = cs.create({
+                'title': content_data.get('title', topic),
+                'topic': topic,
+                'language': language,
+                'content_type': content_type,
+                'status': 'pending_review',
+                'tags': content_data.get('tags', []),
+                'body': content_data.get('caption', ''),
+                'dedupe_hash': self._compute_hash(
+                    content_data.get('title', ''), content_data.get('caption', ''))
+            })
+
+            # Step 5: 创建 variant 记录
+            vs = VariantService(self.db_path)
+            variant_id = vs.create({
+                'content_id': content_id,
+                'platform': platform,
+                'headline': content_data.get('headline', ''),
+                'caption': content_data.get('caption', ''),
+                'hashtags': content_data.get('hashtags', []),
+                'status': 'ready',
+            })
+
+            # Step 6: 渲染卡片并关联到 variant
+            from services.card_render_service import CardRenderService
+            render_svc = CardRenderService(self.db_path)
+            try:
+                asset_ids = render_svc.render_and_attach(
+                    variant_id, slides, template, platform, color_scheme)
+            finally:
+                render_svc.close()
+
+            # Step 7: 记录日志
+            self._log_generation(task_id, result)
+            self._update_task(task_id, status='completed',
+                             completed_at=datetime.now().isoformat(),
+                             content_id=content_id,
+                             output_data=json.dumps(content_data))
+
+            # Build preview URLs
+            preview_urls = []
+            from services.content_service import AssetService
+            asset_svc = AssetService(self.db_path)
+            for aid in asset_ids:
+                asset = asset_svc.get(aid)
+                if asset:
+                    preview_urls.append(f"/api/uploads/{asset['storage_url']}")
+
+            return {
+                'task_id': task_id,
+                'content_id': content_id,
+                'variant_id': variant_id,
+                'slides': slides,
+                'asset_ids': asset_ids,
+                'preview_urls': preview_urls,
+                'tokens': {
+                    'input': result['input_tokens'],
+                    'output': result['output_tokens'],
+                    'total': result['total_tokens']
+                },
+                'latency_ms': result['latency_ms']
+            }
+
+        except Exception as e:
+            self._update_task(task_id, status='failed',
+                             error_message=str(e),
+                             completed_at=datetime.now().isoformat())
+            raise
+
     # ── 内容生成 ─────────────────────────────────────────────
 
     def generate_content(self, ai_config: dict, topic: str, platform: str,

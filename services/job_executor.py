@@ -48,21 +48,39 @@ class JobExecutor:
         logger.info("JobExecutor stopped")
 
     def _ensure_browser(self):
-        """Lazy-init the browser service (non-headless for visibility)."""
+        """Lazy-init browser pool (shared persistent instance pool)."""
         if self._browser_svc and self._browser_svc.is_running:
             return
         from config import (
             BROWSER_HEADLESS, BROWSER_TIMEOUT_SECONDS, BROWSER_MAX_CONCURRENT,
-            BROWSER_SCREENSHOT_DIR, BROWSER_USER_AGENTS,
+            BROWSER_SCREENSHOT_DIR, BROWSER_USER_AGENTS, BROWSER_POOL_ENABLED,
         )
-        from services.browser_service import BrowserService
-        self._browser_svc = BrowserService({
-            "headless": BROWSER_HEADLESS,
-            "timeout": BROWSER_TIMEOUT_SECONDS,
-            "max_concurrent": BROWSER_MAX_CONCURRENT,
-            "screenshot_dir": BROWSER_SCREENSHOT_DIR,
-            "user_agents": BROWSER_USER_AGENTS,
-        })
+        if BROWSER_POOL_ENABLED:
+            from services.browser_pool import BrowserPool
+            from config import (
+                BROWSER_PROFILE_DIR, BROWSER_POOL_MAX_INSTANCES,
+                BROWSER_POOL_IDLE_TIMEOUT, BROWSER_POOL_CLEANUP_INTERVAL,
+            )
+            self._browser_svc = BrowserPool({
+                "headless": BROWSER_HEADLESS,
+                "timeout": BROWSER_TIMEOUT_SECONDS,
+                "max_concurrent": BROWSER_MAX_CONCURRENT,
+                "screenshot_dir": BROWSER_SCREENSHOT_DIR,
+                "user_agents": BROWSER_USER_AGENTS,
+                "profile_base_dir": BROWSER_PROFILE_DIR,
+                "max_instances": BROWSER_POOL_MAX_INSTANCES,
+                "idle_timeout": BROWSER_POOL_IDLE_TIMEOUT,
+                "cleanup_interval": BROWSER_POOL_CLEANUP_INTERVAL,
+            })
+        else:
+            from services.browser_service import BrowserService
+            self._browser_svc = BrowserService({
+                "headless": BROWSER_HEADLESS,
+                "timeout": BROWSER_TIMEOUT_SECONDS,
+                "max_concurrent": BROWSER_MAX_CONCURRENT,
+                "screenshot_dir": BROWSER_SCREENSHOT_DIR,
+                "user_agents": BROWSER_USER_AGENTS,
+            })
         self._browser_svc.start()
 
     def _poll_loop(self):

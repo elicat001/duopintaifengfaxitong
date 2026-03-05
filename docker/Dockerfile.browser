@@ -1,0 +1,20 @@
+# Custom browser automation image with anti-detection patches
+FROM browserless/chromium:latest
+
+# Install fonts for CJK (Chinese/Japanese/Korean) rendering
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create profile directory
+RUN mkdir -p /data/profile && chmod 777 /data/profile
+
+# Environment
+ENV CONNECTION_TIMEOUT=600000
+ENV MAX_CONCURRENT_SESSIONS=5
+ENV WORKSPACE_DIR=/data/profile
+ENV PREBOOT_CHROME=true
+ENV KEEP_ALIVE=true
+
+EXPOSE 3000

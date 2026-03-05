@@ -71,6 +71,22 @@ app.register_blueprint(account_health_bp)
 from api.browser_login import browser_login_bp
 app.register_blueprint(browser_login_bp)
 
+from api.replies import replies_bp
+app.register_blueprint(replies_bp)
+
+from api.browser_pool import browser_pool_bp
+app.register_blueprint(browser_pool_bp)
+
+# Start background reply executor
+from config import REPLY_EXECUTOR_ENABLED, REPLY_EXECUTOR_POLL_INTERVAL
+if REPLY_EXECUTOR_ENABLED:
+    from services.reply_executor import ReplyExecutor
+    _reply_executor = ReplyExecutor(
+        db_path=DB_PATH,
+        poll_interval=REPLY_EXECUTOR_POLL_INTERVAL,
+    )
+    _reply_executor.start()
+
 import logging
 logger = logging.getLogger(__name__)
 

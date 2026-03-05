@@ -6,8 +6,9 @@ Stages (in order):
     2. topic_select    - Select / generate content topics from trends
     3. content_gen     - Generate content for each selected topic
     4. variant_gen     - Create platform-specific variants
-    5. auto_review     - Optionally auto-approve generated content
-    6. job_dispatch    - Create distribution jobs for target accounts
+    5. card_render     - Render card images for variants
+    6. auto_review     - Optionally auto-approve generated content
+    7. job_dispatch    - Create distribution jobs for target accounts
 """
 
 import json
@@ -59,6 +60,7 @@ class AIPipelineExecutor:
         "topic_select",
         "content_gen",
         "variant_gen",
+        "card_render",
         "auto_review",
         "job_dispatch",
     ]
@@ -133,6 +135,10 @@ class AIPipelineExecutor:
                 elif stage_name == "variant_gen":
                     variant_count = self._stage_variant_gen(pipeline, run_id, content_ids)
                     stats["variants_generated"] = len(variant_count)
+
+                elif stage_name == "card_render":
+                    cards_rendered = self._stage_card_render(pipeline, run_id, content_ids)
+                    stats["cards_rendered"] = cards_rendered
 
                 elif stage_name == "auto_review":
                     self._stage_auto_review(pipeline, run_id, content_ids)
@@ -374,6 +380,89 @@ class AIPipelineExecutor:
 
         logger.info("job_dispatch: created %d jobs", len(all_job_ids))
         return all_job_ids
+
+    def _stage_card_render(self, pipeline: dict, run_id: int,
+                           content_ids: list) -> int:
+        """Stage 5: Render card images for variants that lack media.
+
+        Reads slides data from generation_task output_data and renders
+        them as PNG card images using CardRenderService.
+        Returns count of variants that received card images.
+        """
+        from services.card_render_service import CardRenderService
+        from services.content_service import VariantService
+        from config import CARD_TEMPLATES_DIR, UPLOAD_DIR
+
+        vs = VariantService(self.db_path)
+
+        # Pipeline-level card settings (stored in trigger_config or defaults)
+        trigger_config = pipeline.get("trigger_config", {}) or {}
+        if isinstance(trigger_config, str):
+            try:
+                trigger_config = json.loads(trigger_config)
+            except Exception:
+                trigger_config = {}
+        template = trigger_config.get("card_template", "minimal")
+        color_scheme = trigger_config.get("card_color_scheme")
+
+        render_svc = CardRenderService(self.db_path, CARD_TEMPLATES_DIR, UPLOAD_DIR)
+        rendered_count = 0
+
+        try:
+            for cid in content_ids:
+                variants = vs.list_by_content(cid)
+                for variant in variants:
+                    # Skip variants that already have media
+                    existing_media = variant.get("media_asset_ids")
+                    if existing_media:
+                        if isinstance(existing_media, str):
+                            try:
+                                existing_media = json.loads(existing_media)
+                            except Exception:
+                                existing_media = []
+                        if existing_media:
+                            continue
+
+                    platform = variant.get("platform", "xiaohongshu")
+
+                    # Find slides from generation_task output_data
+                    slides = self._get_slides_for_content(cid)
+                    if not slides:
+                        continue
+
+                    try:
+                        render_svc.render_and_attach(
+                            variant["id"], slides, template, platform, color_scheme)
+                        rendered_count += 1
+                    except Exception as exc:
+                        logger.error("card_render failed for variant %d: %s",
+                                     variant["id"], exc)
+        finally:
+            render_svc.close()
+
+        logger.info("card_render: rendered cards for %d variants", rendered_count)
+        return rendered_count
+
+    def _get_slides_for_content(self, content_id: int) -> list:
+        """Retrieve slides data from generation_task output_data for a content."""
+        conn = get_connection(self.db_path)
+        try:
+            row = conn.execute("""
+                SELECT output_data FROM generation_tasks
+                WHERE content_id = ? AND task_type IN ('card_content', 'content')
+                  AND status = 'completed'
+                ORDER BY id DESC LIMIT 1
+            """, (content_id,)).fetchone()
+            if not row or not row["output_data"]:
+                return []
+            output = row["output_data"]
+            if isinstance(output, str):
+                output = json.loads(output)
+            return output.get("slides", [])
+        except Exception:
+            return []
+        finally:
+            conn.close()
 
     # ── private helpers ─────────────────────────────────────────────────
 

@@ -55,6 +55,20 @@ SCHEDULE_INTERVAL_SECONDS = 3600
 JOB_EXECUTOR_POLL_INTERVAL = int(os.environ.get("JOB_EXECUTOR_POLL_INTERVAL", "10"))
 JOB_EXECUTOR_ENABLED = os.environ.get("JOB_EXECUTOR_ENABLED", "true").lower() == "true"
 
+# Reply executor
+REPLY_EXECUTOR_POLL_INTERVAL = int(os.environ.get("REPLY_EXECUTOR_POLL_INTERVAL", "15"))
+REPLY_EXECUTOR_ENABLED = os.environ.get("REPLY_EXECUTOR_ENABLED", "true").lower() == "true"
+
+# Reply defaults
+REPLY_DEFAULT_TONE = "friendly"
+REPLY_DEFAULT_MAX_LENGTH = 200
+REPLY_MAX_RETRIES = 3
+REPLY_WARMUP_BROWSE_COUNT = 3
+REPLY_MIN_READ_SECONDS = 5
+REPLY_MAX_READ_SECONDS = 30
+REPLY_TYPING_SPEED_MIN = 30
+REPLY_TYPING_SPEED_MAX = 80
+
 # AI defaults
 AI_DEFAULT_PROVIDER = "anthropic"
 AI_DEFAULT_MODEL = "claude-sonnet-4-20250514"
@@ -98,6 +112,9 @@ WARMING_STAGES = {
     5: {"daily_limit": 10, "hourly_limit": 3, "duration_days": 7},
 }
 
+# Card render templates
+CARD_TEMPLATES_DIR = os.path.join(BASE_DIR, "templates", "cards")
+
 # Browser automation
 BROWSER_HEADLESS = os.environ.get("BROWSER_HEADLESS", "false").lower() == "true"
 BROWSER_TIMEOUT_SECONDS = int(os.environ.get("BROWSER_TIMEOUT_SECONDS", "60"))
@@ -109,3 +126,18 @@ BROWSER_USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
 ]
+
+# Browser profile persistence
+BROWSER_PROFILE_DIR = os.path.join(BASE_DIR, "data", "browser_profiles")
+
+# Browser pool settings
+BROWSER_POOL_MAX_INSTANCES = int(os.environ.get("BROWSER_POOL_MAX_INSTANCES", "10"))
+BROWSER_POOL_IDLE_TIMEOUT = int(os.environ.get("BROWSER_POOL_IDLE_TIMEOUT", "600"))
+BROWSER_POOL_CLEANUP_INTERVAL = int(os.environ.get("BROWSER_POOL_CLEANUP_INTERVAL", "60"))
+BROWSER_POOL_ENABLED = os.environ.get("BROWSER_POOL_ENABLED", "false").lower() == "true"
+
+# Docker browser containers
+DOCKER_BROWSER_ENABLED = os.environ.get("DOCKER_BROWSER_ENABLED", "false").lower() == "true"
+DOCKER_BROWSER_IMAGE = os.environ.get("DOCKER_BROWSER_IMAGE", "browserless/chromium:latest")
+DOCKER_BROWSER_BASE_PORT = int(os.environ.get("DOCKER_BROWSER_BASE_PORT", "9222"))
+DOCKER_BROWSER_NETWORK = os.environ.get("DOCKER_BROWSER_NETWORK", "browser-net")

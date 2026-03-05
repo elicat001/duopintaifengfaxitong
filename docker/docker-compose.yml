@@ -1,0 +1,57 @@
+version: '3.8'
+
+# Browser automation infrastructure
+# Usage: docker-compose up -d
+# Each browser-node can serve one or more accounts via persistent profiles
+
+services:
+  # Browser node template - duplicate and customize per account group
+  browser-node-1:
+    image: browserless/chromium:latest
+    container_name: inswu-browser-1
+    restart: unless-stopped
+    ports:
+      - "9222:3000"
+    volumes:
+      - ../data/browser_profiles/node1:/data/profile
+    environment:
+      - CONNECTION_TIMEOUT=600000
+      - MAX_CONCURRENT_SESSIONS=5
+      - WORKSPACE_DIR=/data/profile
+      - PREBOOT_CHROME=true
+      - KEEP_ALIVE=true
+      - DEFAULT_LAUNCH_ARGS=["--disable-blink-features=AutomationControlled","--no-sandbox","--disable-dev-shm-usage"]
+    networks:
+      - browser-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+
+  browser-node-2:
+    image: browserless/chromium:latest
+    container_name: inswu-browser-2
+    restart: unless-stopped
+    ports:
+      - "9223:3000"
+    volumes:
+      - ../data/browser_profiles/node2:/data/profile
+    environment:
+      - CONNECTION_TIMEOUT=600000
+      - MAX_CONCURRENT_SESSIONS=5
+      - WORKSPACE_DIR=/data/profile
+      - PREBOOT_CHROME=true
+      - KEEP_ALIVE=true
+      - DEFAULT_LAUNCH_ARGS=["--disable-blink-features=AutomationControlled","--no-sandbox","--disable-dev-shm-usage"]
+    networks:
+      - browser-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+
+networks:
+  browser-net:
+    driver: bridge
